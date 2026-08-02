@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Sign in to your EventFlow workspace.">
+  <title>Sign In — EventFlow</title>
+  <link rel="stylesheet" href="css/login.css">
+</head>
+<body>
+  <main class="login-page">
+    <section class="auth-area" aria-labelledby="auth-title">
+      <a href="index.html" class="auth-logo" aria-label="EventFlow home">
+        <img src="assets/logo/logo.svg" alt="" width="28" height="28">
+        <span>EventFlow</span>
+      </a>
+
+      <div class="auth-heading">
+        <h1 id="auth-title">Welcome back.</h1>
+        <p>Sign in to continue to your EventFlow workspace.</p>
+      </div>
+
+      <details class="demo-credentials" open>
+        <summary>Demo credentials</summary>
+        <div class="demo-credentials__list">
+          <p><strong>Admin</strong><span>admin@eventflow.demo</span><code>Admin@123</code></p>
+          <p><strong>Volunteer</strong><span>volunteer@eventflow.demo</span><code>Volunteer@123</code></p>
+          <p><strong>Participant</strong><span>rahul.participant@eventflow.demo</span><code>Participant@123</code></p>
+        </div>
+      </details>
+
+      <div class="mode-switch" role="tablist" aria-label="Choose login type">
+        <button type="button" class="mode-tab is-active" id="teamTab" role="tab" aria-selected="true" aria-controls="teamLogin">Team</button>
+        <button type="button" class="mode-tab" id="participantTab" role="tab" aria-selected="false" aria-controls="participantLogin">Participant</button>
+      </div>
+
+      <div class="form-stage">
+        <form class="auth-form is-active" id="teamLogin" novalidate>
+          <div class="field-group">
+            <label for="teamEmail">Work Email</label>
+            <input type="email" id="teamEmail" name="teamEmail" placeholder="Enter your email" autocomplete="email">
+            <p class="field-error" id="teamEmailError" role="alert"></p>
+          </div>
+
+          <div class="field-group">
+            <label for="teamPassword">Password</label>
+            <div class="password-wrap">
+              <input type="password" id="teamPassword" name="teamPassword" placeholder="Enter your password" autocomplete="current-password">
+              <button type="button" class="password-toggle" id="passwordToggle" aria-label="Show password">
+                <svg class="eye-icon eye-icon--open" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="2.75" stroke="currentColor" stroke-width="1.5"/></svg>
+                <svg class="eye-icon eye-icon--closed" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 3L21 21M10.6 5.8C11.05 5.6 11.52 5.5 12 5.5 18 5.5 21.5 12 21.5 12S20.2 14.4 18.1 16.1M6.3 6.8C3.8 8.6 2.5 12 2.5 12S6 18.5 12 18.5c1.1 0 2.1-.2 3-.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+            </div>
+            <p class="field-error" id="teamPasswordError" role="alert"></p>
+          </div>
+
+          <a class="forgot-link" href="#">Forgot password?</a>
+          <button class="submit-button" id="loginButton" type="submit">Sign In <span>→</span></button>
+          <p class="form-status" id="teamStatus" role="status" aria-live="polite"></p>
+
+          <div class="divider"><span>or continue with</span></div>
+          <button class="google-button" type="button"><span class="google-mark">G</span> Continue with Google</button>
+
+          <p class="form-footer">Don't have an account? <a href="#">Create Organization</a></p>
+        </form>
+
+        <form class="auth-form" id="participantLogin" novalidate hidden>
+          <div class="field-group">
+            <label for="participantEmail">Email</label>
+            <input type="email" id="participantEmail" name="participantEmail" placeholder="Enter your email" autocomplete="email">
+            <p class="field-error" id="participantEmailError" role="alert"></p>
+          </div>
+
+          <div class="field-group">
+            <label for="participantPassword">Password</label>
+            <input type="password" id="participantPassword" name="participantPassword" placeholder="Enter your password" autocomplete="current-password">
+            <p class="field-error" id="participantPasswordError" role="alert"></p>
+          </div>
+
+          <button class="submit-button" id="participantButton" type="submit">Login <span>→</span></button>
+          <p class="form-status" id="participantStatus" role="status" aria-live="polite"></p>
+          <div class="divider"><span>or</span></div>
+          <button class="google-button" id="participantGoogleButton" type="button"><span class="google-mark">G</span> Continue with Google</button>
+          <button class="create-account-button" id="createParticipantButton" type="button">Create Account</button>
+        </form>
+      </div>
+    </section>
+  </main>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/login.js"></script>
+</body>
+</html>
