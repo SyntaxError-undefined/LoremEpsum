@@ -556,8 +556,13 @@ const renderParticipantQr = async () => {
     container.innerHTML = '';
     new QRCode(container, {
       text: token,
-      width: 300,
-      height: 300,
+      // UUID tokens are 36 bytes and fit QR version 3 at M correction.
+      // Version 3 has 29 modules, so 290px gives every module an exact
+      // 10px square. Never scale this image afterwards: scaling makes the
+      // modules uneven and prevents camera/file decoders from reading it.
+      typeNumber: 3,
+      width: 290,
+      height: 290,
       colorDark: '#0f172a',
       colorLight: '#ffffff',
       correctLevel: QRCode.CorrectLevel.M  // M = 15% redundancy, much easier to scan than H (30%)
@@ -571,8 +576,8 @@ const renderParticipantQr = async () => {
     const img = container.querySelector('img');
     if (img) {
       img.style.display = 'block';
-      img.style.width = '280px';
-      img.style.height = '280px';
+      img.style.width = '290px';
+      img.style.height = '290px';
       img.style.borderRadius = '8px';
     }
 

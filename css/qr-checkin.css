@@ -26,10 +26,11 @@
 
 .participant-qr-canvas img {
   display: block !important;
-  width: 280px !important;
-  height: 280px !important;
+  /* Keep the image at its generated 290px size (29 modules × 10px). */
+  width: 290px !important;
+  height: 290px !important;
   border-radius: 10px;
-  image-rendering: crisp-edges;
+  image-rendering: pixelated;
 }
 
 .qr-generating {
