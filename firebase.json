@@ -1,0 +1,14 @@
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": [
+      {
+        "collectionGroup": "tasks",
+        "queryScope": "COLLECTION",
+        "fields": [
+          { "fieldPath": "assignedEmail", "order": "ASCENDING" }
+        ]
+      }
+    ]
+  }
+}

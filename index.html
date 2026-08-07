@@ -3,412 +3,85 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="EventFlow — the all-in-one platform to manage college events, teams, tasks and everything in between.">
-  <title>EventFlow — Event Management, Reimagined</title>
+  <meta name="description" content="EventFlow helps colleges and organizations plan events, coordinate teams, and create impact.">
+  <title>EventFlow — Plan Smarter. Collaborate Better.</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=20260806_toggle_final">
 </head>
 <body>
-
-  <!-- Header -->
-  <header class="header" id="header">
-    <div class="container header__inner">
-      <a href="#" class="logo" aria-label="EventFlow home">
-        <img src="assets/logo/logo.svg" alt="" class="logo__icon" width="28" height="28">
-        <span class="logo__text">EventFlow</span>
-      </a>
-
-      <nav class="nav" id="nav" aria-label="Main navigation">
-        <ul class="nav__list">
-          <li><a href="#features" class="nav__link">Features</a></li>
-          <li><a href="#how-it-works" class="nav__link">How It Works</a></li>
-          <li><a href="#pricing" class="nav__link">Pricing</a></li>
+  <div class="cursor-glow"></div>
+ 
+  <header class="site-header" id="header">
+    <div class="page-shell site-header__inner">
+      <a href="#top" class="brand" aria-label="EventFlow home"><span class="brand-mark" aria-hidden="true"></span><span>EventFlow</span></a>
+      <nav class="site-nav" id="nav" aria-label="Main navigation">
+        <ul class="site-nav__links">
+          <li><a href="#features">Features</a></li>
+          <li><a href="#how-it-works">How It Works</a></li>
+          <li><a href="#pricing">Pricing</a></li>
+          <li><a href="#about">About</a></li>
+          <li><a href="#contact">Contact</a></li>
         </ul>
-        <div class="nav__actions">
-          <a href="login.html" class="nav__link nav__link--login" id="login-link">Login</a>
-          <a href="#get-started" class="btn btn--primary btn--sm">Get Started</a>
-        </div>
+        <div class="site-nav__actions"><a href="team-login.html" class="login-link" data-role-link="login">Log in</a><a href="register-admin.html" class="button button--coral button--small" data-role-link="signup">Get Started <span>→</span></a></div>
       </nav>
-
-      <button class="menu-toggle" id="menu-toggle" aria-label="Toggle navigation menu" aria-expanded="false">
-        <img src="assets/icons/menu.svg" alt="" class="menu-toggle__icon menu-toggle__icon--open" width="24" height="24">
-        <img src="assets/icons/close.svg" alt="" class="menu-toggle__icon menu-toggle__icon--close" width="24" height="24">
-      </button>
+      <button class="menu-toggle" id="menu-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false"><span></span><span></span></button>
+    </div>
+    <div class="floating-toggle" aria-label="Choose your EventFlow experience">
+      <div class="role-switch" role="group" aria-label="Select a role">
+        <button class="toggle-btn active" type="button" data-role="admin" aria-pressed="true">Admin</button>
+        <button class="toggle-btn" type="button" data-role="participant" aria-pressed="false">Participant</button>
+      </div>
     </div>
   </header>
-
-  <main>
-
-    <!-- Hero -->
-    <section class="hero section" id="hero">
-      <div class="container hero__grid">
-        <div class="hero__content reveal">
-          <p class="eyebrow">EVENT MANAGEMENT, REIMAGINED</p>
-          <h1 class="hero__title">
-            Organize events.<br>
-            Empower teams.<br>
-            <span class="text-purple">Create impact.</span>
-          </h1>
-          <p class="hero__desc">
-            EventFlow is the all-in-one platform to manage college events, teams, tasks and everything in between.
-          </p>
-          <div class="hero__actions">
-            <a href="#get-started" class="btn btn--primary">Get Started →</a>
-            <a href="#demo" class="btn btn--ghost">
-              <img src="assets/icons/play.svg" alt="" width="16" height="16" class="btn__icon">
-              Watch Demo
-            </a>
-          </div>
+  <main id="top">
+    <section class="hero-section">
+      <div class="page-shell hero-grid">
+        <div class="hero-copy reveal">
+          <p class="eyebrow eyebrow--teal" data-copy="eyebrow">EVENT MANAGEMENT, REIMAGINED</p>
+          <h1 data-copy="title">Plan Smarter.<br>Collaborate Better.<br><span>Create Impact.</span></h1>
+          <div class="hero-underline" aria-hidden="true"></div>
+          <p class="hero-copy__text" data-copy="description">EventFlow helps colleges and organizations manage events, teams, tasks, and everything in between — seamlessly.</p>
+          <div class="hero-actions"><a href="register-admin.html" class="button button--teal" data-role-link="signup">Get Started Free <span>→</span></a><a href="#how-it-works" class="demo-link"><span class="play-button">▶</span> <span data-copy="secondaryAction">Watch Demo</span></a></div>
         </div>
-
-        <div class="hero__visual reveal reveal--delay">
-          <div class="hero-mark" aria-hidden="true">
-            <div class="hero-mark__halo"></div>
-            <img src="assets/logo/logo.svg" alt="" class="hero-mark__logo" width="180" height="180">
-          </div>
-          <div class="dashboard-wrap dashboard-wrap--hero">
-            <div class="dashboard-glow"></div>
-            <div class="dashboard dashboard--hero" id="dashboard-hero">
-              <div class="dashboard__sidebar">
-                <div class="dashboard__sidebar-logo">
-                  <img src="assets/logo/logo.svg" alt="" width="20" height="20">
-                </div>
-                <nav class="dashboard__sidebar-nav">
-                  <span class="dashboard__nav-item dashboard__nav-item--active" aria-label="Dashboard"></span>
-                  <span class="dashboard__nav-item" aria-label="Events"></span>
-                  <span class="dashboard__nav-item" aria-label="Teams"></span>
-                  <span class="dashboard__nav-item" aria-label="Tasks"></span>
-                  <span class="dashboard__nav-item" aria-label="Analytics"></span>
-                </nav>
-              </div>
-              <div class="dashboard__main">
-                <div class="dashboard__header">
-                  <div>
-                    <h3 class="dashboard__event-name">Pulzion 2027</h3>
-                    <span class="dashboard__badge dashboard__badge--live">HAPPENING NOW</span>
-                  </div>
-                </div>
-                <div class="dashboard__stats">
-                  <div class="stat-card">
-                    <span class="stat-card__label">Participants</span>
-                    <span class="stat-card__value">1,247</span>
-                    <svg class="stat-card__sparkline" viewBox="0 0 60 20" preserveAspectRatio="none"><polyline points="0,15 10,12 20,14 30,8 40,10 50,5 60,7" fill="none" stroke="#6D28FF" stroke-width="1.5"/></svg>
-                  </div>
-                  <div class="stat-card">
-                    <span class="stat-card__label">Volunteers</span>
-                    <span class="stat-card__value">86</span>
-                    <svg class="stat-card__sparkline" viewBox="0 0 60 20" preserveAspectRatio="none"><polyline points="0,12 10,10 20,8 30,11 40,6 50,9 60,4" fill="none" stroke="#22C55E" stroke-width="1.5"/></svg>
-                  </div>
-                  <div class="stat-card">
-                    <span class="stat-card__label">Check-ins</span>
-                    <span class="stat-card__value">342</span>
-                    <svg class="stat-card__sparkline" viewBox="0 0 60 20" preserveAspectRatio="none"><polyline points="0,10 10,14 20,8 30,12 40,7 50,10 60,6" fill="none" stroke="#3B82F6" stroke-width="1.5"/></svg>
-                  </div>
-                  <div class="stat-card">
-                    <span class="stat-card__label">Tasks Done</span>
-                    <span class="stat-card__value">78%</span>
-                    <svg class="stat-card__sparkline" viewBox="0 0 60 20" preserveAspectRatio="none"><polyline points="0,16 10,14 20,12 30,10 40,8 50,6 60,4" fill="none" stroke="#F59E0B" stroke-width="1.5"/></svg>
-                  </div>
-                </div>
-                <div class="dashboard__chart-area">
-                  <p class="dashboard__chart-title">Participants Over Time</p>
-                  <svg class="dashboard__chart" viewBox="0 0 400 100" preserveAspectRatio="none">
-                    <defs>
-                      <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stop-color="#6D28FF" stop-opacity="0.3"/>
-                        <stop offset="100%" stop-color="#6D28FF" stop-opacity="0"/>
-                      </linearGradient>
-                    </defs>
-                    <path d="M0,80 L40,70 L80,65 L120,55 L160,50 L200,40 L240,35 L280,30 L320,25 L360,20 L400,15 L400,100 L0,100 Z" fill="url(#chartGrad)"/>
-                    <polyline points="0,80 40,70 80,65 120,55 160,50 200,40 240,35 280,30 320,25 360,20 400,15" fill="none" stroke="#6D28FF" stroke-width="2"/>
-                  </svg>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div class="hero-art reveal reveal--delay" aria-label="EventFlow event preview">
+          <span class="art-blob art-blob--yellow"></span><span class="art-blob art-blob--teal"></span><span class="art-blob art-blob--coral"></span>
+          <span class="art-line art-line--one"></span><span class="art-line art-line--two"></span>
+          <span class="floating-icon floating-icon--people">♟</span><span class="floating-icon floating-icon--calendar">▣</span><span class="floating-icon floating-icon--chart">⌁</span>
+          <article class="event-preview-card"><div class="event-preview-card__image"><span class="stage-light stage-light--one"></span><span class="stage-light stage-light--two"></span><span class="stage-light stage-light--three"></span><span class="stage-crowd"></span><span class="stage-title" data-art="title">LIVE<br><small>EVENT</small></span></div><div class="event-preview-card__content"><h2 data-art="name">Pulzion 2027</h2><p data-art="date">28 – 30 Aug 2027</p><p data-art="location">PICT Campus, Pune</p><button type="button" aria-label="View event">↗</button></div></article>
+          <div class="dot-grid dot-grid--hero"></div>
         </div>
       </div>
     </section>
 
-    <!-- Features / Product Showcase -->
-    <section class="features section" id="features">
-      <div class="container features__grid">
-        <div class="features__content reveal">
-          <p class="eyebrow">MADE FOR EVENT TEAMS</p>
-          <h2 class="section-title">
-            Everything<br>
-            in one place.
-          </h2>
-          <p class="features__desc">
-            From registrations to task tracking, EventFlow keeps your entire team aligned and your event on track.
-          </p>
-          <a href="#features" class="link-arrow">Explore Features →</a>
-        </div>
-
-        <div class="features__visual reveal reveal--delay">
-          <div class="dashboard-wrap">
-            <div class="dashboard-glow"></div>
-            <div class="dashboard dashboard--full" id="dashboard-features">
-              <div class="dashboard__sidebar">
-                <div class="dashboard__sidebar-logo">
-                  <img src="assets/logo/logo.svg" alt="" width="20" height="20">
-                </div>
-                <nav class="dashboard__sidebar-nav">
-                  <span class="dashboard__nav-item dashboard__nav-item--active" aria-label="Dashboard"></span>
-                  <span class="dashboard__nav-item" aria-label="Events"></span>
-                  <span class="dashboard__nav-item" aria-label="Teams"></span>
-                  <span class="dashboard__nav-item" aria-label="Tasks"></span>
-                  <span class="dashboard__nav-item" aria-label="Analytics"></span>
-                </nav>
-              </div>
-              <div class="dashboard__main">
-                <div class="dashboard__header">
-                  <div>
-                    <h3 class="dashboard__event-name">Pulzion 2027</h3>
-                    <span class="dashboard__badge dashboard__badge--live">HAPPENING NOW</span>
-                  </div>
-                </div>
-                <div class="dashboard__body">
-                  <div class="dashboard__left">
-                    <div class="dashboard__stats dashboard__stats--compact">
-                      <div class="stat-card stat-card--sm">
-                        <span class="stat-card__label">Participants</span>
-                        <span class="stat-card__value">1,247</span>
-                        <svg class="stat-card__sparkline" viewBox="0 0 60 20" preserveAspectRatio="none"><polyline points="0,15 10,12 20,14 30,8 40,10 50,5 60,7" fill="none" stroke="#6D28FF" stroke-width="1.5"/></svg>
-                      </div>
-                      <div class="stat-card stat-card--sm">
-                        <span class="stat-card__label">Volunteers</span>
-                        <span class="stat-card__value">86</span>
-                        <svg class="stat-card__sparkline" viewBox="0 0 60 20" preserveAspectRatio="none"><polyline points="0,12 10,10 20,8 30,11 40,6 50,9 60,4" fill="none" stroke="#22C55E" stroke-width="1.5"/></svg>
-                      </div>
-                      <div class="stat-card stat-card--sm">
-                        <span class="stat-card__label">Check-ins</span>
-                        <span class="stat-card__value">342</span>
-                        <svg class="stat-card__sparkline" viewBox="0 0 60 20" preserveAspectRatio="none"><polyline points="0,10 10,14 20,8 30,12 40,7 50,10 60,6" fill="none" stroke="#3B82F6" stroke-width="1.5"/></svg>
-                      </div>
-                      <div class="stat-card stat-card--sm">
-                        <span class="stat-card__label">Tasks Done</span>
-                        <span class="stat-card__value">78%</span>
-                        <svg class="stat-card__sparkline" viewBox="0 0 60 20" preserveAspectRatio="none"><polyline points="0,16 10,14 20,12 30,10 40,8 50,6 60,4" fill="none" stroke="#F59E0B" stroke-width="1.5"/></svg>
-                      </div>
-                    </div>
-                    <div class="dashboard__chart-area">
-                      <p class="dashboard__chart-title">Participants Over Time</p>
-                      <svg class="dashboard__chart" viewBox="0 0 400 100" preserveAspectRatio="none">
-                        <defs>
-                          <linearGradient id="chartGrad2" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stop-color="#6D28FF" stop-opacity="0.3"/>
-                            <stop offset="100%" stop-color="#6D28FF" stop-opacity="0"/>
-                          </linearGradient>
-                        </defs>
-                        <path d="M0,80 L40,70 L80,65 L120,55 L160,50 L200,40 L240,35 L280,30 L320,25 L360,20 L400,15 L400,100 L0,100 Z" fill="url(#chartGrad2)"/>
-                        <polyline points="0,80 40,70 80,65 120,55 160,50 200,40 240,35 280,30 320,25 360,20 400,15" fill="none" stroke="#6D28FF" stroke-width="2"/>
-                      </svg>
-                    </div>
-                  </div>
-                  <div class="dashboard__activity">
-                    <p class="dashboard__activity-title">Recent Activity</p>
-                    <ul class="activity-feed">
-                      <li class="activity-feed__item">
-                        <span class="activity-feed__avatar"></span>
-                        <div class="activity-feed__text">
-                          <span class="activity-feed__name">Sarah K.</span> checked in 12 participants
-                          <span class="activity-feed__time">2m ago</span>
-                        </div>
-                      </li>
-                      <li class="activity-feed__item">
-                        <span class="activity-feed__avatar activity-feed__avatar--green"></span>
-                        <div class="activity-feed__text">
-                          <span class="activity-feed__name">Dev Team</span> completed stage setup
-                          <span class="activity-feed__time">15m ago</span>
-                        </div>
-                      </li>
-                      <li class="activity-feed__item">
-                        <span class="activity-feed__avatar activity-feed__avatar--blue"></span>
-                        <div class="activity-feed__text">
-                          <span class="activity-feed__name">Alex M.</span> assigned 3 new tasks
-                          <span class="activity-feed__time">1h ago</span>
-                        </div>
-                      </li>
-                      <li class="activity-feed__item">
-                        <span class="activity-feed__avatar activity-feed__avatar--orange"></span>
-                        <div class="activity-feed__text">
-                          <span class="activity-feed__name">Priya R.</span> updated registration count
-                          <span class="activity-feed__time">3h ago</span>
-                        </div>
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+    <section class="stats-section reveal" aria-label="EventFlow statistics">
+      <div class="page-shell stats-grid">
+        <div class="stat-item"><span class="stat-icon stat-icon--teal">▦</span><strong data-stat="one">500+</strong><span data-stat-label="one">Events Managed</span></div>
+        <div class="stat-item"><span class="stat-icon stat-icon--mint">♟</span><strong data-stat="two">10K+</strong><span data-stat-label="two">Participants</span></div>
+        <div class="stat-item"><span class="stat-icon stat-icon--yellow">♣</span><strong data-stat="three">200+</strong><span data-stat-label="three">Teams</span></div>
+        <div class="stat-item"><span class="stat-icon stat-icon--coral">✓</span><strong data-stat="four">99.9%</strong><span data-stat-label="four">Successful Check-ins</span></div>
+        <div class="stat-item"><span class="stat-icon stat-icon--red">↗</span><strong data-stat="five">24/7</strong><span data-stat-label="five">Support</span></div>
+      </div>
+    </section>
+    <section class="feature-section" id="features">
+      <div class="page-shell feature-heading reveal"><p class="eyebrow eyebrow--teal" data-copy="featureEyebrow">MADE FOR EVENT TEAMS</p><h2 data-copy="featureTitle">Everything you need<br><span>to make it happen.</span></h2><p data-copy="featureDescription">From the first idea to the final check-in, EventFlow brings every moving piece into one clear, collaborative workspace.</p></div>
+      <div class="page-shell feature-grid">
+        <article class="feature-card feature-card--teal reveal"><span class="feature-card__number">01</span><span class="feature-card__icon">♣</span><h3 data-feature="one-title">Bring your team together</h3><p data-feature="one-description">Keep departments, volunteers, and responsibilities aligned from one shared workspace.</p></article>
+        <article class="feature-card feature-card--yellow reveal reveal--delay"><span class="feature-card__number">02</span><span class="feature-card__icon">▦</span><h3 data-feature="two-title">Make every detail count</h3><p data-feature="two-description">Plan schedules, manage registrations, and keep your event moving without the busywork.</p></article>
+        <article class="feature-card feature-card--coral reveal reveal--delay-2"><span class="feature-card__number">03</span><span class="feature-card__icon">↗</span><h3 data-feature="three-title">See your impact clearly</h3><p data-feature="three-description">Real-time progress and check-ins help your team make better decisions, faster.</p></article>
       </div>
     </section>
 
-    <!-- How It Works -->
-    <section class="workflow section" id="how-it-works">
-      <div class="container">
-        <div class="workflow__header reveal">
-          <p class="eyebrow eyebrow--center">SIMPLE WORKFLOW</p>
-          <h2 class="section-title section-title--center">
-            Focus on the event.<br>
-            We'll handle the rest.
-          </h2>
-        </div>
-
-        <div class="workflow__steps reveal reveal--delay">
-          <div class="workflow__connector" aria-hidden="true"></div>
-
-          <div class="workflow__step">
-            <div class="workflow__icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.5"/>
-                <path d="M3 9H21" stroke="currentColor" stroke-width="1.5"/>
-                <path d="M8 2V5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                <path d="M16 2V5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-              </svg>
-            </div>
-            <span class="workflow__number">01</span>
-            <h3 class="workflow__title">Create Event</h3>
-            <p class="workflow__desc">Add your event details and get started in minutes.</p>
-          </div>
-
-          <div class="workflow__step">
-            <div class="workflow__icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <circle cx="9" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/>
-                <circle cx="17" cy="7" r="3" stroke="currentColor" stroke-width="1.5"/>
-                <path d="M3 20C3 16.134 6.13401 13 10 13H16C19.866 13 23 16.134 23 20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-              </svg>
-            </div>
-            <span class="workflow__number">02</span>
-            <h3 class="workflow__title">Build Your Team</h3>
-            <p class="workflow__desc">Create departments and add your leads &amp; volunteers.</p>
-          </div>
-
-          <div class="workflow__step">
-            <div class="workflow__icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="1.5"/>
-                <path d="M8 12L11 15L16 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </div>
-            <span class="workflow__number">03</span>
-            <h3 class="workflow__title">Assign &amp; Track</h3>
-            <p class="workflow__desc">Assign tasks, set deadlines and track progress.</p>
-          </div>
-
-          <div class="workflow__step">
-            <div class="workflow__icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M4 20V10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                <path d="M10 20V4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                <path d="M16 20V14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                <path d="M22 20V8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-              </svg>
-            </div>
-            <span class="workflow__number">04</span>
-            <h3 class="workflow__title">Analyze &amp; Improve</h3>
-            <p class="workflow__desc">Get real-time insights and make better decisions.</p>
-          </div>
-        </div>
-      </div>
+    <section class="workflow-section" id="how-it-works">
+      <div class="page-shell workflow-heading reveal"><p class="eyebrow eyebrow--coral" data-copy="workflowEyebrow">SIMPLE BY DESIGN</p><h2 data-copy="workflowTitle">From idea to impact.</h2></div>
+      <div class="page-shell workflow-grid"><div class="workflow-line"></div><article class="workflow-step reveal"><span>01</span><div>✦</div><h3 data-workflow="one-title">Create your event</h3><p data-workflow="one-description">Set the details and get your event moving in minutes.</p></article><article class="workflow-step reveal reveal--delay"><span>02</span><div>♣</div><h3 data-workflow="two-title">Build your team</h3><p data-workflow="two-description">Bring the right people together around a shared goal.</p></article><article class="workflow-step reveal reveal--delay-2"><span>03</span><div>✓</div><h3 data-workflow="three-title">Track the work</h3><p data-workflow="three-description">Keep tasks, progress, and check-ins in one place.</p></article><article class="workflow-step reveal reveal--delay-3"><span>04</span><div>↗</div><h3 data-workflow="four-title">Make an impact</h3><p data-workflow="four-description">Learn from the event and make the next one better.</p></article></div>
     </section>
 
-    <!-- Pricing anchor (minimal, for nav link) -->
-    <div id="pricing" class="pricing-anchor"></div>
-
-    <!-- CTA -->
-    <section class="cta section" id="get-started">
-      <div class="container reveal">
-        <div class="cta__inner">
-          <div class="cta__content">
-            <h2 class="cta__title">Ready to streamline your event?</h2>
-            <p class="cta__desc">Join EventFlow and experience stress-free event management.</p>
-          </div>
-          <a href="#get-started" class="btn btn--primary btn--lg" id="cta-button">Get Started for Free →</a>
-        </div>
-      </div>
-    </section>
-
+    <section class="cta-section" id="pricing"><div class="page-shell cta-card reveal"><div><p class="eyebrow eyebrow--teal" data-copy="ctaEyebrow">READY WHEN YOU ARE</p><h2 data-copy="ctaTitle">Make your next event unforgettable.</h2><p data-copy="ctaDescription">Start planning smarter with EventFlow today.</p></div><a href="register-admin.html" class="button button--coral" data-role-link="signup">Get Started Free <span>→</span></a></div></section>
   </main>
 
-  <!-- Footer -->
-  <footer class="footer">
-    <div class="container">
-      <div class="footer__grid">
-        <div class="footer__brand">
-          <a href="#" class="logo">
-            <img src="assets/logo/logo.svg" alt="" class="logo__icon" width="28" height="28">
-            <span class="logo__text">EventFlow</span>
-          </a>
-          <p class="footer__tagline">Simplifying event management for college teams.</p>
-        </div>
-
-        <div class="footer__col">
-          <h4 class="footer__heading">Product</h4>
-          <ul class="footer__links">
-            <li><a href="#features">Features</a></li>
-            <li><a href="#how-it-works">How It Works</a></li>
-            <li><a href="#pricing">Pricing</a></li>
-          </ul>
-        </div>
-
-        <div class="footer__col">
-          <h4 class="footer__heading">Company</h4>
-          <ul class="footer__links">
-            <li><a href="#about">About Us</a></li>
-            <li><a href="#contact">Contact</a></li>
-          </ul>
-        </div>
-
-        <div class="footer__col">
-          <h4 class="footer__heading">Resources</h4>
-          <ul class="footer__links">
-            <li><a href="#help">Help Center</a></li>
-            <li><a href="#guides">Guides</a></li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="footer__bottom">
-        <p class="footer__copyright">&copy; 2025 EventFlow. All rights reserved.</p>
-        <div class="footer__social">
-          <a href="#" class="footer__social-link" aria-label="Instagram">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <rect x="2" y="2" width="20" height="20" rx="5" stroke="currentColor" stroke-width="1.5"/>
-              <circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="1.5"/>
-              <circle cx="17.5" cy="6.5" r="1.5" fill="currentColor"/>
-            </svg>
-          </a>
-          <a href="#" class="footer__social-link" aria-label="LinkedIn">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <rect x="2" y="2" width="20" height="20" rx="2" stroke="currentColor" stroke-width="1.5"/>
-              <path d="M7 10V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-              <path d="M7 7V7.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-              <path d="M11 10V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-              <path d="M11 13C11 11.3431 12.3431 10 14 10C15.6569 10 17 11.3431 17 13V17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-            </svg>
-          </a>
-          <a href="#" class="footer__social-link" aria-label="Twitter">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M4 4L10.5 13.5L4 20H6L11.5 14.5L16 20H20L13 10L19 4H17L12 9L8 4H4Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-            </svg>
-          </a>
-          <a href="#" class="footer__social-link" aria-label="GitHub">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M9 19C4 20.5 4 16.5 4 16.5C4 16.5 2 15 2 12C2 7 5.5 4.5 9.5 4.5C11.5 4.5 13 5 14 5.5C15 5 16.5 4.5 18.5 4.5C22.5 4.5 26 7 26 12C26 15 24 16.5 24 16.5C24 16.5 24 20.5 19 19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" transform="scale(0.85) translate(2,2)"/>
-            </svg>
-          </a>
-        </div>
-      </div>
-    </div>
-  </footer>
-
-  <script src="js/script.js"></script>
+  <footer class="site-footer" id="about"><div class="page-shell footer-grid"><div><a href="#top" class="brand"><span class="brand-mark" aria-hidden="true"></span><span>EventFlow</span></a><p>Making events simpler, teams stronger, and ideas bigger.</p></div><div><h3>Product</h3><a href="#features">Features</a><a href="#how-it-works">How It Works</a><a href="#pricing">Pricing</a></div><div><h3>Company</h3><a href="#about">About Us</a><a href="#contact">Contact</a><a href="team-login.html" data-role-link="login">Login</a></div><div id="contact"><h3>Stay in the loop</h3><p>Tips and updates for better events.</p><form class="subscribe-form"><input type="email" placeholder="Enter your email" aria-label="Email address"><button type="submit">→</button></form></div></div><div class="page-shell footer-bottom"><span>© 2025 EventFlow. All rights reserved.</span><span>Built for teams that create impact.</span></div></footer>
+  <script src="js/script.js?v=20260806_toggle_final"></script>
 </body>
 </html>

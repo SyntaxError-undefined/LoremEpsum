@@ -1,8 +1,7 @@
 const roleApp = document.querySelector('#roleApp');
 const storedProfile = JSON.parse(sessionStorage.getItem('eventflowUser') || 'null');
-const requestedRole = new URLSearchParams(window.location.search).get('role');
-const role = requestedRole === 'participant' ? 'participant' : storedProfile?.role || null;
-if (!role || role === 'admin') window.location.replace(role === 'admin' ? 'admin.html' : 'login.html');
+const role = storedProfile?.role || sessionStorage.getItem('eventflowDemoRole') || 'participant';
+if (role === 'admin') window.location.replace('admin.html');
 const volunteerProfile = {
   uid: storedProfile?.uid || sessionStorage.getItem('eventflowDemoEmail') || 'demo-volunteer',
   name: storedProfile?.name || 'Rahul',
@@ -13,41 +12,37 @@ const volunteerProfile = {
   eventName: storedProfile?.eventName || 'Pulzion 2027',
   eventMeta: storedProfile?.eventMeta || 'Pulzion 2027 · 28 Aug — 30 Aug 2027'
 };
-const participant = { name: storedProfile?.name || 'Rahul Kadam', email: storedProfile?.email || 'rahul.participant@eventflow.demo', initials: 'RK', label: 'Participant workspace' };
-const volunteerTasks = [
-  { id:'contact-colleges', title:'Contact 20 colleges', due:'25 Aug 2027', department:'Outreach', completed:false },
-  { id:'instagram-campaign', title:'Create Instagram campaign', due:'26 Aug 2027', department:'Social Media', completed:true },
-  { id:'event-poster', title:'Design event poster', due:'27 Aug 2027', department:'Design', completed:true },
-  { id:'reach-sponsors', title:'Reach out to sponsors', due:'28 Aug 2027', department:'Sponsorship', completed:true },
-  { id:'venue-logistics', title:'Confirm venue logistics', due:'28 Aug 2027', department:'Logistics', completed:true },
-  { id:'volunteer-roster', title:'Prepare volunteer roster', due:'28 Aug 2027', department:'Marketing', completed:true },
-  { id:'publish-schedule', title:'Publish event schedule', due:'29 Aug 2027', department:'Content', completed:false },
-  { id:'checkin-desk', title:'Coordinate check-in desk', due:'30 Aug 2027', department:'Technical', completed:false }
-];
-const taskStorageKey = `eventflowTasks:${volunteerProfile.uid}:${volunteerProfile.eventId}`;
+const participant = { name: storedProfile?.name || 'Rahul Kadam', email: storedProfile?.email || 'rahul.participant@eventflow.demo', initials: 'RK', label: '' };
 const progressStorageKey = `eventflowProgress:${volunteerProfile.uid}:${volunteerProfile.eventId}`;
 const readJson = (key, fallback) => { try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; } };
 const saveJson = (key, value) => localStorage.setItem(key, JSON.stringify(value));
-const savedTasks = readJson(taskStorageKey, null);
-let tasks = savedTasks ? volunteerTasks.map((task) => ({ ...task, completed: Boolean(savedTasks[task.id]) })) : volunteerTasks.map((task) => ({ ...task }));
+let tasks = [];
 const savedProgress = readJson(progressStorageKey, null);
 let departmentProgress = savedProgress?.progressPercentage ?? 78;
+let participantEvents = [];
+let participantEventsLoading = false;
+let participantEventsError = '';
 let firestoreServices;
-const participantEvents = [
-  { id:'pulzion', name:'Pulzion 2027', category:'Technical Festival', date:'28 Aug – 30 Aug 2027', time:'10:00 AM – 06:00 PM', timezone:'(UTC+05:30) Asia/Kolkata', location:'PICT Campus, Pune', address:'Survey No. 27, Pune-Satara Road, Dhankawadi, Pune, Maharashtra 411043', organizer:'PICT ACM Student Chapter', contact:'pulzion@pict.edu · +91 98765 43210', website:'https://pulzion.pict.edu', description:'Pulzion is the annual technical festival of PICT where innovation meets creativity.', detailedDescription:'Join workshops, competitions, guest talks and hands-on experiences led by student builders and industry mentors.', schedule:[['Opening Ceremony','28 Aug · 10:00 AM'],['Technical Workshop','29 Aug · 11:00 AM'],['Closing Ceremony','30 Aug · 04:00 PM']] },
-  { id:'hackathon-2027', name:'Hackathon 2027', category:'Innovation Challenge', date:'12 Sept 2027', time:'09:00 AM – 09:00 PM', timezone:'(UTC+05:30) Asia/Kolkata', location:'PICT Campus, Pune', address:'PICT Campus, Pune', organizer:'EventFlow Innovation Club', contact:'hello@eventflow.demo', website:'https://eventflow.demo/hackathon', description:'A focused build sprint for student teams solving real-world problems.', detailedDescription:'Form a team, build a working solution and present your idea to a panel of mentors.', schedule:[['Opening Briefing','12 Sept · 09:00 AM'],['Build Sprint','12 Sept · 10:00 AM'],['Final Showcase','12 Sept · 07:00 PM']] },
-  { id:'ai-workshop', name:'Workshop: AI in Action', category:'Workshop', date:'20 Sept 2027', time:'10:00 AM – 01:00 PM', timezone:'(UTC+05:30) Asia/Kolkata', location:'Seminar Hall 1, PICT Campus', address:'PICT Campus, Pune', organizer:'EventFlow Learning Team', contact:'learn@eventflow.demo', website:'https://eventflow.demo/workshops', description:'A practical introduction to building useful AI-powered experiences.', detailedDescription:'Explore current AI tools through guided examples and a hands-on mini project.', schedule:[['Welcome & Introduction','20 Sept · 10:00 AM'],['Hands-on Workshop','20 Sept · 11:00 AM'],['Wrap-up','20 Sept · 12:30 PM']] }
-];
+let taskUnsubscribe;
 const participantRegistrationKey = `eventflowParticipantRegistrations:${participant.email}`;
-let participantRegisteredIds = readJson(participantRegistrationKey, ['pulzion']);
+let participantRegisteredIds = readJson(participantRegistrationKey, []);
 let participantTab = 'events';
 let participantScreen = 'workspace';
 let participantEventId = null;
+let participantSearch = '';
+const today = new Date();
+let participantCalendarDate = { year: today.getFullYear(), month: today.getMonth() };
+
+// ─── QR / Scanner State ────────────────────────────────────────────────────
+let volunteerScreen = 'dashboard'; // 'dashboard' | 'scanner'
+let qrScannerInstance = null;
+let scannerPaused = false;
+let sessionScanLog = []; // { token, name, event, action, time }[]
+const qrTokenKey = (eventId) => `eventflowQrToken:${participant.email}:${eventId}`;
 
 const initials = (name) => name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase();
-const escapeHtml = (value = '') => String(value).replace(/[&<>'"]/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#039;', '"':'&quot;' }[char]));
 const volunteerCompletedCount = () => tasks.filter((task) => task.completed).length;
-const volunteerProgress = () => Math.round((volunteerCompletedCount() / tasks.length) * 100);
+const volunteerProgress = () => tasks.length ? Math.round((volunteerCompletedCount() / tasks.length) * 100) : 0;
 const volunteerReports = () => readJson('eventflowProgressReports', []).filter((report) => report.eventId === volunteerProfile.eventId && report.volunteerId === volunteerProfile.uid).sort((first, second) => new Date(second.createdAt) - new Date(first.createdAt));
 
 const user = role === 'volunteer'
@@ -63,17 +58,39 @@ const showToast = (message) => { const toast = document.createElement('div'); to
 const getFirestoreServices = async () => {
   if (firestoreServices) return firestoreServices;
   const config = window.EVENTFLOW_FIREBASE_CONFIG || {};
-  if (role !== 'volunteer' || !storedProfile?.uid || !config.apiKey) return null;
-  const [{ initializeApp }, firestoreSdk] = await Promise.all([
+  if (!config.apiKey) return null;
+  const [{ initializeApp }, authSdk, firestoreSdk] = await Promise.all([
     import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js'),
+    import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'),
     import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js')
   ]);
   const app = initializeApp(config);
-  firestoreServices = { db: firestoreSdk.getFirestore(app), ...firestoreSdk };
+  firestoreServices = { auth: authSdk.getAuth(app), db: firestoreSdk.getFirestore(app), ...authSdk, ...firestoreSdk };
   return firestoreServices;
 };
 
-const loadFirestoreTasks = async () => {
+const getInitialAuthUser = (services) => new Promise((resolve) => {
+  const unsubscribe = services.onAuthStateChanged(services.auth, (user) => {
+    unsubscribe();
+    resolve(user);
+  });
+});
+
+const bootstrapVolunteerSession = async () => {
+  if (role === 'participant') return true;
+  if (role !== 'volunteer') return false;
+  try {
+    const services = await getFirestoreServices();
+    if (!services) return true;
+    const user = await getInitialAuthUser(services);
+    if (!user || user.uid !== storedProfile?.uid) throw new Error('Your session has expired.');
+    const profile = await services.getDoc(services.doc(services.db, 'users', user.uid));
+    if (!profile.exists() || profile.data().role !== role) throw new Error('Workspace access is not assigned.');
+    return true;
+  } catch { window.location.replace('team-login.html'); return false; }
+};
+
+const subscribeToFirestoreTasks = async () => {
   let services;
   try { services = await getFirestoreServices(); } catch { return; }
   if (!services) return;
@@ -87,16 +104,133 @@ const loadFirestoreTasks = async () => {
       volunteerProfile.email = assignment.email || volunteerProfile.email;
       render();
     }
-    const taskQuery = services.query(services.collection(services.db, 'tasks'), services.where('assignedTo', '==', volunteerProfile.uid));
-    const snapshot = await services.getDocs(taskQuery);
-    const remoteTasks = snapshot.docs.map((item) => ({ id:item.id, eventId:item.data().eventId, title:item.data().title || 'Assigned task', due:item.data().dueDate || 'Date to be decided', department:item.data().department || volunteerProfile.department, completed:Boolean(item.data().completed) })).filter((task) => !task.eventId || task.eventId === volunteerProfile.eventId);
-    if (remoteTasks.length) { tasks = remoteTasks; render(); }
+    taskUnsubscribe?.();
+    const taskQuery = services.query(services.collection(services.db, 'tasks'), services.where('assignedEmail', '==', String(volunteerProfile.email).trim().toLowerCase()));
+    taskUnsubscribe = services.onSnapshot(taskQuery, (snapshot) => {
+      tasks = snapshot.docs.map((item) => ({ id:item.id, eventId:item.data().eventId, title:item.data().title || 'Assigned task', due:item.data().dueDate || 'Date to be decided', department:item.data().department || volunteerProfile.department, completed:Boolean(item.data().completed) })).filter((task) => task.eventId === volunteerProfile.eventId);
+      render();
+    });
   } catch { }
 };
 
-const progressReportModal = () => `<div class="role-modal-backdrop" data-progress-backdrop><section class="role-modal" role="dialog" aria-modal="true" aria-labelledby="progressModalTitle"><div class="role-modal__head"><div><h2 id="progressModalTitle">Update Department Progress</h2><p>Share a quick update with your event admin.</p></div><button type="button" class="modal-close" data-close-progress>×</button></div><form id="progressReportForm"><label class="modal-field"><span>Current Progress</span><div class="percentage-input"><input id="progressPercentage" type="number" min="0" max="100" value="${departmentProgress}" required><b>%</b></div></label><label class="modal-field"><span>Progress Update</span><textarea id="progressReportText" rows="5" required placeholder="Contacted 12 colleges and received responses from 8 of them."></textarea></label><div class="modal-actions"><button type="button" class="button button--ghost" data-close-progress>Cancel</button><button type="submit" class="button">Submit Report</button></div></form></section></div>`;
+const mapParticipantEvent = (id, data) => ({
+  id,
+  name: data.eventName || data.name || '',
+  visibility: data.visibility || 'private',
+  cardTheme: data.cardTheme || 'harbor',
+  category: data.eventCategory || data.type || 'Event',
+  date: data.date || [data.startDate, data.endDate].filter(Boolean).join(' – ') || 'Date to be announced',
+  time: data.time || [data.startTime, data.endTime].filter(Boolean).join(' – ') || 'Time to be announced',
+  timezone: data.timezone || 'Timezone to be announced',
+  location: data.venue || 'Venue to be announced',
+  address: data.address || data.venue || 'Address to be announced',
+  organizer: data.organizer || 'EventFlow organizer',
+  contact: [data.contactEmail, data.contactPhone].filter(Boolean).join(' · ') || 'Contact details to be announced',
+  website: data.website || '—',
+  description: data.shortDescription || data.description || 'Details will be shared by the organizer.',
+  detailedDescription: data.detailedDescription || data.shortDescription || data.description || 'Details will be shared by the organizer.',
+  schedule: Array.isArray(data.schedule) ? data.schedule : []
+});
+const isDisplayableParticipantEvent = (event) => event.id
+  && event.name
+  && event.name.trim().toLowerCase() !== 'untitled event'
+  && event.visibility === 'public';
 
-const openProgressModal = () => { document.body.insertAdjacentHTML('beforeend', progressReportModal()); document.querySelector('#progressReportText').focus(); };
+const getStoredLocalEvents = () => {
+  try {
+    const list = JSON.parse(localStorage.getItem('eventflowEvents') || '[]');
+    return Array.isArray(list) ? list.map((item) => mapParticipantEvent(item.id, item)) : [];
+  } catch {
+    return [];
+  }
+};
+
+const loadParticipantEvents = async () => {
+  participantEventsError = '';
+  participantEventsLoading = true;
+
+  const localEvents = getStoredLocalEvents();
+  const eventsMap = new Map();
+  localEvents.forEach((event) => {
+    if (isDisplayableParticipantEvent(event)) eventsMap.set(String(event.id), event);
+  });
+
+  participantEvents = Array.from(eventsMap.values());
+  render();
+
+  try {
+    const services = await getFirestoreServices();
+    if (services) {
+      let docs = [];
+      try {
+        const publicQuery = services.query(
+          services.collection(services.db, 'events'),
+          services.where('visibility', '==', 'public')
+        );
+        const snapshot = await services.getDocs(publicQuery);
+        docs = snapshot.docs;
+      } catch {
+        const snapshot = await services.getDocs(services.collection(services.db, 'events'));
+        docs = snapshot.docs;
+      }
+
+      const remotePublicEvents = docs
+        .map((item) => mapParticipantEvent(item.id, item.data()))
+        .filter(isDisplayableParticipantEvent);
+
+      remotePublicEvents.forEach((event) => {
+        eventsMap.set(String(event.id), event);
+      });
+
+      participantEvents = Array.from(eventsMap.values());
+
+      if (storedProfile?.uid) {
+        try {
+          const registrationsSnapshot = await services.getDocs(
+            services.query(
+              services.collection(services.db, 'participantRegistrations'),
+              services.where('participantId', '==', storedProfile.uid)
+            )
+          );
+          const remoteRegs = registrationsSnapshot.docs.map((item) => item.data().eventId).filter(Boolean);
+          participantRegisteredIds = [...new Set([...participantRegisteredIds, ...remoteRegs])];
+          saveJson(participantRegistrationKey, participantRegisteredIds);
+        } catch { }
+      }
+    }
+  } catch (error) {
+    participantEventsError = error?.message || 'Please check your connection and try again.';
+  } finally {
+    participantEventsLoading = false;
+    render();
+  }
+};
+
+const cloneTemplate = (id) => document.getElementById(id).content.cloneNode(true);
+const firstTemplateElement = (id) => cloneTemplate(id).firstElementChild;
+const setText = (root, selector, value) => {
+  const element = root.querySelector(selector);
+  if (element) element.textContent = value ?? '';
+  return element;
+};
+const appendEmptyState = (container, title, text, action = null) => {
+  const emptyState = firstTemplateElement('participantEmptyTemplate');
+  setText(emptyState, '[data-empty-field="title"]', title);
+  setText(emptyState, '[data-empty-field="text"]', text);
+  const actionButton = emptyState.querySelector('[data-empty-action]');
+  if (action) {
+    actionButton.hidden = false;
+    actionButton.textContent = action.label;
+    Object.entries(action.dataset || {}).forEach(([key, value]) => { actionButton.dataset[key] = value; });
+  }
+  container.append(emptyState);
+};
+
+const openProgressModal = () => {
+  document.body.append(cloneTemplate('progressReportTemplate'));
+  document.querySelector('#progressPercentage').value = departmentProgress;
+  document.querySelector('#progressReportText').focus();
+};
 const closeProgressModal = () => document.querySelector('.role-modal-backdrop')?.remove();
 const saveProgressReport = async (progressPercentage, reportText) => {
   const report = { eventId: volunteerProfile.eventId, eventName: volunteerProfile.eventName, department: volunteerProfile.department, volunteerId: volunteerProfile.uid, volunteerName: volunteerProfile.name, volunteerEmail: volunteerProfile.email, progressPercentage, reportText, createdAt: new Date().toISOString() };
@@ -111,54 +245,616 @@ const saveProgressReport = async (progressPercentage, reportText) => {
   departmentProgress = progressPercentage;
 };
 
+const createVolunteerTask = (task) => {
+  const taskElement = firstTemplateElement('volunteerTaskTemplate');
+  const input = taskElement.querySelector('input');
+  input.dataset.taskId = task.id;
+  input.checked = task.completed;
+  taskElement.classList.toggle('is-completed', task.completed);
+  setText(taskElement, '[data-task-field="title"]', task.title);
+  setText(taskElement, '[data-task-field="meta"]', `Due ${task.due} · ${task.department}`);
+  setText(taskElement, '[data-task-field="status"]', task.completed ? 'Completed' : 'Pending');
+  return taskElement;
+};
+const createProgressReport = (report) => {
+  const reportElement = firstTemplateElement('progressReportItemTemplate');
+  setText(reportElement, '[data-report-field="progress"]', `${report.progressPercentage}% progress`);
+  setText(reportElement, '[data-report-field="date"]', new Date(report.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }));
+  setText(reportElement, '[data-report-field="department"]', report.department);
+  setText(reportElement, '[data-report-field="text"]', `“${report.reportText}”`);
+  return reportElement;
+};
 const volunteerView = () => {
   const completed = volunteerCompletedCount();
   const progress = volunteerProgress();
   const reports = volunteerReports();
-  const history = reports.length ? reports.map((report) => `<article class="progress-report"><div class="progress-report__head"><div><strong>${report.progressPercentage}% progress</strong><small>${new Date(report.createdAt).toLocaleString([], { dateStyle:'medium', timeStyle:'short' })}</small></div><span class="tag">${escapeHtml(report.department)}</span></div><p>“${escapeHtml(report.reportText)}”</p></article>`).join('') : '<p class="history-empty">Your submitted progress updates will appear here.</p>';
-  return `<div class="role-main"><div class="hero-heading"><div><p class="eyebrow">Volunteer workspace</p><h1>Your event, in motion.</h1><p>Keep your assignments moving and share progress with the team.</p></div><button class="button" data-action="update-progress">Update Progress →</button></div><div class="summary-grid"><div class="summary"><label>Assigned Tasks</label><strong>${tasks.length}</strong></div><div class="summary"><label>Completed</label><strong>${completed}</strong></div><div class="summary"><label>Progress</label><strong>${progress}%</strong></div></div><div class="content-grid"><section class="section"><h2>My tasks</h2><div class="list">${tasks.map((task) => `<label class="list-row task-row ${task.completed ? 'is-completed' : ''}"><span class="task-check"><input type="checkbox" data-task-id="${task.id}" ${task.completed ? 'checked' : ''}><span class="task-check__box" aria-hidden="true">✓</span></span><span class="task-copy"><strong>${escapeHtml(task.title)}</strong><small>Due ${escapeHtml(task.due)} · ${escapeHtml(task.department)}</small></span><span class="tag task-status">${task.completed ? 'Completed' : 'Pending'}</span></label>`).join('')}</div></section><section class="section"><h2>Team progress</h2><div class="event-panel"><div class="event-panel__top"><span class="event-mark">✦</span><div><h2>${escapeHtml(volunteerProfile.department)} Department</h2><p>${escapeHtml(volunteerProfile.eventMeta)}</p></div></div><div class="progress"><div class="progress__label"><span>Department progress</span><strong>${departmentProgress}%</strong></div><div class="progress__track"><span style="width:${departmentProgress}%"></span></div></div><span class="tag">12 volunteers active</span></div></section></div><div class="notice">Complete tasks as you go, then submit a short progress report for your admin.</div><section class="section progress-history"><div class="section-heading"><div><p class="eyebrow">Your activity</p><h2>Past Progress Updates</h2></div><span class="history-count">${reports.length} ${reports.length === 1 ? 'update' : 'updates'}</span></div><div class="progress-report-list">${history}</div></section></div>`;
+  const view = firstTemplateElement('volunteerTemplate');
+  const remaining = Math.max(tasks.length - completed, 0);
+  setText(view, '[data-volunteer-field="task-count"]', tasks.length);
+  setText(view, '[data-volunteer-field="completed-count"]', completed);
+  setText(view, '[data-volunteer-field="progress"]', `${progress}%`);
+  setText(view, '[data-volunteer-field="event-name"]', volunteerProfile.eventName);
+  setText(view, '[data-volunteer-field="department"]', `${volunteerProfile.department} Department`);
+  setText(view, '[data-volunteer-field="event-meta"]', volunteerProfile.eventMeta);
+  setText(view, '[data-volunteer-field="department-progress"]', `${departmentProgress}%`);
+  setText(view, '[data-volunteer-field="task-remaining"]', remaining ? `${remaining} to go` : 'All done');
+  setText(view, '[data-volunteer-field="report-count"]', `${reports.length} ${reports.length === 1 ? 'update' : 'updates'}`);
+  view.querySelector('[data-volunteer-field="personal-progress-track"]').style.width = `${progress}%`;
+  view.querySelector('[data-volunteer-field="progress-track"]').style.width = `${departmentProgress}%`;
+  const taskList = view.querySelector('[data-volunteer-tasks]');
+  if (tasks.length) tasks.forEach((task) => taskList.append(createVolunteerTask(task)));
+  else { const emptyTasks = document.createElement('p'); emptyTasks.className = 'volunteer-task-empty'; emptyTasks.textContent = 'No tasks assigned yet. Your admin will add your next task here.'; taskList.append(emptyTasks); }
+  const reportList = view.querySelector('[data-volunteer-reports]');
+  if (reports.length) reports.forEach((report) => reportList.append(createProgressReport(report)));
+  else {
+    const emptyHistory = document.createElement('p');
+    emptyHistory.className = 'history-empty';
+    emptyHistory.textContent = 'Your submitted progress updates will appear here.';
+    reportList.append(emptyHistory);
+  }
+  return view;
 };
 
-const getParticipantEvent = () => participantEvents.find((event) => event.id === participantEventId) || participantEvents[0];
+const getParticipantEvent = () => participantEvents.find((event) => event.id === participantEventId) || participantEvents[0] || null;
 const participantIsRegistered = (eventId) => participantRegisteredIds.includes(eventId);
-const participantEventCard = (event) => `<article class="participant-event-card" data-participant-action="view-event" data-event-id="${event.id}"><div><p class="eyebrow">${escapeHtml(event.category)}</p><h2>${escapeHtml(event.name)}</h2><p class="participant-event-card__description">${escapeHtml(event.description)}</p><div class="participant-event-card__meta"><span>${escapeHtml(event.date)}</span><span>${escapeHtml(event.time)}</span><span>${escapeHtml(event.location)}</span></div></div><button class="button button--ghost" type="button">View Details →</button></article>`;
-const participantPassCard = (event) => `<button class="participant-pass registered-pass" data-participant-action="open-registered" data-event-id="${event.id}"><span class="participant-pass__label">EventFlow participant</span><h2>${escapeHtml(participant.name)}</h2><p>${escapeHtml(event.name)} · ${escapeHtml(event.location)}</p><span class="participant-pass__event">${escapeHtml(event.category)}</span><span class="participant-pass__code">Registered</span></button>`;
+const formatEventDate = (value = '') => String(value).split(' – ').map((part) => {
+  const parsed = new Date(`${part}T00:00:00`);
+  return Number.isNaN(parsed.getTime()) ? part : parsed.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}).join(' – ');
+const parseEventDatePart = (value, fallbackYear = new Date().getFullYear()) => {
+  const dateValue = String(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+    const parsedIso = new Date(`${dateValue}T00:00:00`);
+    return Number.isNaN(parsedIso.getTime()) ? null : parsedIso;
+  }
+  const match = dateValue.match(/(\d{1,2})\s+([A-Za-z]{3,9})(?:\s+(\d{4}))?/);
+  if (!match) return null;
+  const parsed = new Date(`${match[2]} ${match[1]}, ${match[3] || fallbackYear}`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+const parseEventDates = (event) => {
+  const parts = String(event.date || '').split(/\s+–\s+|\s+-\s+/).filter(Boolean);
+  const firstDate = parseEventDatePart(parts[0]);
+  const fallbackYear = firstDate?.getFullYear() || new Date().getFullYear();
+  const lastDate = parts[1] ? parseEventDatePart(parts[1], fallbackYear) : null;
+  return [firstDate, lastDate].filter(Boolean);
+};
+const parseEventStartDate = (event) => {
+  const dates = parseEventDates(event);
+  return dates[0] || null;
+};
+const calendarMonthLabel = (date) => new Date(date.year, date.month, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+const calendarDateKey = (year, month, day) => `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+const registeredCalendarDates = () => participantEvents
+  .filter((event) => participantIsRegistered(event.id))
+  .flatMap(parseEventDates)
+  .map((date) => calendarDateKey(date.getFullYear(), date.getMonth(), date.getDate()));
+const renderParticipantCalendar = (container) => {
+  const { year, month } = participantCalendarDate;
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const previousMonthDays = new Date(year, month, 0).getDate();
+  const registeredDates = registeredCalendarDates();
+  const currentDate = new Date();
+  const currentDateKey = calendarDateKey(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
+  const calendar = firstTemplateElement('participantCalendarTemplate');
+  setText(calendar, '[data-calendar-field="month"]', calendarMonthLabel(participantCalendarDate));
+  const grid = calendar.querySelector('[data-calendar-grid]');
+  for (let index = 0; index < 42; index += 1) {
+    const dayOffset = index - firstDay;
+    const day = dayOffset < 0 ? previousMonthDays + dayOffset + 1 : dayOffset >= daysInMonth ? dayOffset - daysInMonth + 1 : dayOffset + 1;
+    const cellDate = new Date(year, month, dayOffset + 1);
+    const isCurrentMonth = cellDate.getMonth() === month;
+    const dateKey = calendarDateKey(year, month, day);
+    const isRegistered = isCurrentMonth && registeredDates.includes(dateKey);
+    const isToday = isCurrentMonth && dateKey === currentDateKey;
+    const dayElement = firstTemplateElement('participantCalendarDayTemplate');
+    dayElement.classList.toggle('is-muted', !isCurrentMonth);
+    dayElement.classList.toggle('is-registered', isRegistered);
+    dayElement.classList.toggle('is-today', isToday);
+    setText(dayElement, '[data-calendar-day]', day);
+    dayElement.querySelector('i').hidden = !isRegistered;
+    grid.append(dayElement);
+  }
+  container.replaceChildren(calendar);
+};
+const createParticipantEventCard = (event) => {
+  const card = firstTemplateElement('participantEventCardTemplate');
+  card.dataset.eventId = event.id;
+  card.dataset.theme = event.cardTheme || 'harbor';
+  setText(card, '[data-event-field="category"]', event.category);
+  setText(card, '[data-event-field="name"]', event.name);
+  setText(card, '[data-event-field="description"]', event.description);
+  setText(card, '[data-event-field="date"]', formatEventDate(event.date));
+  setText(card, '[data-event-field="time"]', event.time);
+  setText(card, '[data-event-field="location"]', event.location);
+  return card;
+};
+const createParticipantPassCard = (event) => {
+  const card = firstTemplateElement('participantPassCardTemplate');
+  card.dataset.eventId = event.id;
+  setText(card, '[data-pass-field="participant"]', participant.name);
+  setText(card, '[data-pass-field="event"]', event.name);
+  setText(card, '[data-pass-field="location"]', event.location);
+  setText(card, '[data-pass-field="category"]', event.category);
+  return card;
+};
 const participantWorkspaceView = () => {
-  const availableEvents = participantEvents.filter((event) => !participantIsRegistered(event.id));
+  const searchTerm = participantSearch.trim().toLowerCase();
+  const matchesSearch = (event) => !searchTerm || [event.name, event.category, event.location, event.description].some((value) => String(value).toLowerCase().includes(searchTerm));
+  const availableEvents = participantEvents.filter(matchesSearch);
   const registeredEvents = participantEvents.filter((event) => participantIsRegistered(event.id));
-  const content = participantTab === 'events'
-    ? `<section class="participant-event-list">${availableEvents.length ? availableEvents.map(participantEventCard).join('') : '<div class="participant-empty"><h2>No new events available right now.</h2><p>Check back soon for the next EventFlow experience.</p></div>'}</section>`
-    : `<section class="participant-registered-list">${registeredEvents.length ? registeredEvents.map(participantPassCard).join('') : '<div class="participant-empty"><h2>You haven’t registered for any events yet.</h2><button class="button" data-participant-action="participant-tab" data-tab="events">Explore Events →</button></div>'}</section>`;
-  return `<div class="role-main participant-main"><div class="participant-welcome"><p class="eyebrow">Participant workspace</p><h1>Welcome, ${escapeHtml(participant.name)}.</h1><p>Discover events, register for them, and manage your event passes.</p></div><nav class="participant-tabs" aria-label="Participant navigation"><button class="${participantTab === 'events' ? 'is-active' : ''}" data-participant-action="participant-tab" data-tab="events">Events</button><button class="${participantTab === 'registered' ? 'is-active' : ''}" data-participant-action="participant-tab" data-tab="registered">Registered</button></nav>${content}</div>`;
+  const view = firstTemplateElement('participantWorkspaceTemplate');
+  setText(view, '[data-participant-field="name"]', participant.name);
+  renderParticipantCalendar(view.querySelector('[data-participant-calendar]'));
+  view.querySelectorAll('[data-participant-action="participant-tab"]').forEach((button) => button.classList.toggle('is-active', button.dataset.tab === participantTab));
+  const search = view.querySelector('.participant-search');
+  search.hidden = participantTab !== 'events';
+  const searchInput = view.querySelector('#participantSearch');
+  searchInput.value = participantSearch;
+  const eventList = view.querySelector('[data-participant-event-list]');
+  const registeredList = view.querySelector('[data-participant-registered-list]');
+  eventList.hidden = participantTab !== 'events';
+  registeredList.hidden = participantTab !== 'registered';
+  if (participantTab === 'events') {
+    if (participantEventsLoading) appendEmptyState(eventList, 'Loading events…', 'Getting the latest events from EventFlow.');
+    else if (participantEventsError) appendEmptyState(eventList, 'Events could not be loaded.', participantEventsError);
+    else if (availableEvents.length) availableEvents.forEach((event) => eventList.append(createParticipantEventCard(event)));
+    else appendEmptyState(eventList, 'No events match your search.', 'Try a different event name, category, or venue.');
+  } else if (registeredEvents.length) registeredEvents.forEach((event) => registeredList.append(createParticipantPassCard(event)));
+  else appendEmptyState(registeredList, 'You haven’t registered for any events yet.', '', { label: 'Explore Events →', dataset: { participantAction: 'participant-tab', tab: 'events' } });
+  return view;
 };
 const participantPublicEventView = () => {
   const event = getParticipantEvent();
+  if (!event) return firstTemplateElement('participantUnavailableTemplate');
   const registered = participantIsRegistered(event.id);
-  return `<div class="role-main participant-detail-main"><button class="back-link participant-back" data-participant-action="back-workspace">← Back to Events</button><div class="participant-detail-heading"><p class="eyebrow">${escapeHtml(event.category)}</p><h1>${escapeHtml(event.name)}</h1><p>${escapeHtml(event.description)}</p></div><section class="participant-detail-card"><div class="participant-detail-grid"><div><span class="detail-label">Date</span><strong>${escapeHtml(event.date)}</strong></div><div><span class="detail-label">Time</span><strong>${escapeHtml(event.time)}</strong></div><div><span class="detail-label">Timezone</span><strong>${escapeHtml(event.timezone)}</strong></div><div><span class="detail-label">Venue</span><strong>${escapeHtml(event.location)}</strong></div></div><div class="participant-detail-copy"><h2>About this event</h2><p>${escapeHtml(event.detailedDescription || event.description)}</p><dl><div><dt>Full address</dt><dd>${escapeHtml(event.address || event.location)}</dd></div><div><dt>Organizer</dt><dd>${escapeHtml(event.organizer)}</dd></div><div><dt>Contact</dt><dd>${escapeHtml(event.contact)}</dd></div><div><dt>Website</dt><dd>${escapeHtml(event.website)}</dd></div></dl></div></section><div class="participant-register-actions">${registered ? '<button class="button registered-button" disabled>Registered ✓</button>' : `<button class="button" data-participant-action="register-event" data-event-id="${event.id}">Register for Event</button>`}</div></div>`;
+  const view = firstTemplateElement('participantPublicDetailTemplate');
+  setText(view, '[data-detail-field="category"]', event.category);
+  setText(view, '[data-detail-field="name"]', event.name);
+  setText(view, '[data-detail-field="description"]', event.description);
+  setText(view, '[data-detail-field="organizer"]', event.organizer);
+  setText(view, '[data-detail-field="date"]', formatEventDate(event.date));
+  setText(view, '[data-detail-field="time"]', event.time);
+  setText(view, '[data-detail-field="location"]', event.location);
+  setText(view, '[data-detail-field="timezone"]', event.timezone);
+  setText(view, '[data-detail-field="detailed-description"]', event.detailedDescription || event.description);
+  setText(view, '[data-detail-field="address"]', event.address || event.location);
+  setText(view, '[data-detail-field="organizer-secondary"]', event.organizer);
+  setText(view, '[data-detail-field="contact"]', event.contact);
+  setText(view, '[data-detail-field="website"]', event.website);
+  setText(view, '[data-detail-field="registration-message"]', registered ? 'You’re on the guest list.' : 'We’d love to have you there.');
+  setText(view, '[data-detail-field="registration-note"]', registered ? 'Your registration has been confirmed.' : 'Register now to join this event.');
+  const registerButton = view.querySelector('[data-detail-action="register"]');
+  registerButton.dataset.eventId = event.id;
+  registerButton.textContent = registered ? 'Registered ✓' : 'Register for Event →';
+  registerButton.disabled = registered;
+  registerButton.classList.toggle('registered-button', registered);
+  return view;
 };
-const mockQr = (event) => `<div class="mock-qr" aria-label="Mock QR code"><span></span><span></span><span></span><span></span><b>EF</b></div>`;
 const participantRegisteredDetailView = () => {
   const event = getParticipantEvent();
-  return `<div class="role-main participant-detail-main"><button class="back-link participant-back" data-participant-action="participant-tab" data-tab="registered">← Registered Events</button><div class="participant-welcome registered-welcome"><p class="eyebrow">Participant workspace</p><h1>Ready for ${escapeHtml(event.name)}.</h1><p>Your event details and access pass, all in one place.</p></div><div class="summary-grid participant-summary"><div class="summary"><label>Event Dates</label><strong>${escapeHtml(event.date.replace(' 2027', '').replace(' – ', '–'))}</strong></div><div class="summary"><label>Check-in</label><strong>Not Checked In</strong></div><div class="summary"><label>Venue</label><strong>${escapeHtml(event.location.split(',')[0])}</strong></div></div><div class="content-grid participant-registered-content"><section class="section"><h2>Event schedule</h2><div class="list">${event.schedule.map((item) => `<div class="list-row"><div><strong>${escapeHtml(item[0])}</strong><small>${escapeHtml(item[1])}</small></div></div>`).join('')}</div><button class="button participant-public-button" data-participant-action="view-public-details" data-event-id="${event.id}">View Event Details →</button></section><section class="section"><h2>Your access pass</h2><div class="participant-pass"><span class="participant-pass__label">EventFlow participant</span><h2>${escapeHtml(participant.name)}</h2><p>${escapeHtml(event.name)} · ${escapeHtml(event.category)}</p><span class="participant-pass__event">${escapeHtml(event.location)}</span><span class="participant-pass__code">Registered ✓</span></div></section></div><section class="participant-qr-section"><p class="eyebrow">Event check-in</p><h2>Show this QR code at the entrance.</h2>${mockQr(event)}<p>Your QR code is used by the organizer to verify your registration and record your attendance.</p></section></div>`;
+  if (!event) return firstTemplateElement('participantUnavailableTemplate');
+  const view = firstTemplateElement('participantRegisteredDetailTemplate');
+  setText(view, '[data-detail-field="name"]', event.name);
+  setText(view, '[data-detail-field="date"]', formatEventDate(event.date));
+  setText(view, '[data-detail-field="venue-short"]', event.location.split(',')[0]);
+  const publicDetailsButton = view.querySelector('[data-participant-action="view-public-details"]');
+  publicDetailsButton.dataset.eventId = event.id;
+  setText(view, '[data-pass-field="participant"]', participant.name);
+  setText(view, '[data-pass-field="event"]', event.name);
+  setText(view, '[data-pass-field="category"]', event.category);
+  setText(view, '[data-pass-field="location"]', event.location);
+  const schedule = view.querySelector('[data-detail-schedule]');
+  if (event.schedule.length) event.schedule.forEach((item) => {
+    const scheduleItem = firstTemplateElement('scheduleItemTemplate');
+    setText(scheduleItem, '[data-schedule-field="title"]', item[0]);
+    setText(scheduleItem, '[data-schedule-field="meta"]', item[1]);
+    schedule.append(scheduleItem);
+  });
+  else {
+    const emptySchedule = document.createElement('p');
+    emptySchedule.className = 'schedule-empty';
+    emptySchedule.textContent = 'The organizer will share the event schedule soon.';
+    schedule.append(emptySchedule);
+  }
+  // QR code is rendered post-DOM in renderParticipantQr() — do NOT call QRCode here.
+  // The container #participantQrContainer will be found in the live DOM after render().
+
+  return view;
 };
 const participantView = () => participantScreen === 'public-detail' ? participantPublicEventView() : participantScreen === 'registered-detail' ? participantRegisteredDetailView() : participantWorkspaceView();
 
-const render = () => { roleApp.innerHTML = role === 'volunteer' ? volunteerView() : participantView(); };
-render();
-if (role === 'volunteer') loadFirestoreTasks();
+// ─── Volunteer Scanner View ─────────────────────────────────────────────────
+const volunteerScannerView = () => {
+  const view = firstTemplateElement('volunteerScannerTemplate');
+  return view;
+};
 
-roleApp.addEventListener('click', (event) => {
+// ─── Post-DOM QR Rendering ──────────────────────────────────────────────────
+// MUST be called after roleApp.replaceChildren() so the canvas renders correctly.
+const getOrCreateQrToken = async (eventId) => {
+  // 1. Check localStorage first (fast path)
+  const cached = readJson(qrTokenKey(eventId), null);
+  if (cached) return cached;
+
+  // 2. Check Firestore for an existing registration that already has a qrToken
+  try {
+    const services = await getFirestoreServices();
+    if (services && storedProfile?.uid) {
+      const pid = storedProfile.uid;
+      const legacySnap = await services.getDoc(
+        services.doc(services.db, 'participantRegistrations', `${pid}_${eventId}`)
+      );
+      if (legacySnap.exists() && legacySnap.data().qrToken) {
+        const token = legacySnap.data().qrToken;
+        saveJson(qrTokenKey(eventId), token);
+        return token;
+      }
+
+      // 3. No token anywhere — create one now and backfill Firestore
+      const newToken = (typeof crypto !== 'undefined' && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : `${pid}-${eventId}-${Date.now()}`;
+      saveJson(qrTokenKey(eventId), newToken);
+
+      const selectedEvent = participantEvents.find((e) => e.id === eventId);
+      // Write canonical registrations doc
+      await services.setDoc(services.doc(services.db, 'registrations', newToken), {
+        qrToken: newToken,
+        status: 'REGISTERED',
+        checkInTime: null,
+        checkOutTime: null,
+        eventId,
+        eventName: selectedEvent?.name || '',
+        participantId: pid,
+        participantName: participant.name,
+        email: participant.email,
+        volunteerId: null,
+        timestamp: services.serverTimestamp()
+      });
+      // Backfill legacy collections
+      try {
+        await services.updateDoc(
+          services.doc(services.db, 'participantRegistrations', `${pid}_${eventId}`),
+          { qrToken: newToken }
+        );
+      } catch { /* doc may not exist yet, ignore */ }
+      return newToken;
+    }
+  } catch (err) {
+    console.warn('getOrCreateQrToken error:', err);
+  }
+
+  // 4. Offline fallback — generate local token
+  const fallback = `local-${storedProfile?.uid || 'anon'}-${eventId}-${Date.now()}`;
+  saveJson(qrTokenKey(eventId), fallback);
+  return fallback;
+};
+
+const renderParticipantQr = async () => {
+  const event = getParticipantEvent();
+  if (!event) return;
+
+  // These elements now exist in the live DOM
+  const container = document.getElementById('participantQrContainer');
+  const tokenLabel = document.querySelector('[data-qr-token-display]');
+  if (!container) return;
+
+  container.innerHTML = '<p class="qr-generating">Generating your QR code…</p>';
+
+  try {
+    const token = await getOrCreateQrToken(event.id);
+    if (!token) throw new Error('No token available.');
+
+    if (typeof QRCode === 'undefined') {
+      container.innerHTML = '<p class="qr-generating">QR library not loaded. Refresh and try again.</p>';
+      return;
+    }
+
+    // Clear placeholder and render real QR
+    container.innerHTML = '';
+    new QRCode(container, {
+      text: token,
+      width: 300,
+      height: 300,
+      colorDark: '#0f172a',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M  // M = 15% redundancy, much easier to scan than H (30%)
+    });
+
+    // qrcodejs renders BOTH a <canvas> and an <img>.
+    // The <img> is a crisp PNG — better for screen display and scanning.
+    // The canvas can have DPI issues on high-res screens.
+    const canvas = container.querySelector('canvas');
+    if (canvas) canvas.style.display = 'none'; // hide canvas
+    const img = container.querySelector('img');
+    if (img) {
+      img.style.display = 'block';
+      img.style.width = '280px';
+      img.style.height = '280px';
+      img.style.borderRadius = '8px';
+    }
+
+    if (tokenLabel) tokenLabel.textContent = `ID: ${token.slice(0, 8)}…`;
+  } catch (err) {
+    container.innerHTML = '<p class="qr-generating">QR code could not be generated.</p>';
+    console.error('renderParticipantQr error:', err);
+  }
+};
+
+const render = () => {
+  if (role === 'volunteer' && volunteerScreen === 'scanner') {
+    roleApp.replaceChildren(volunteerScannerView());
+    // Mount scanner after DOM is ready
+    requestAnimationFrame(() => mountQrScanner());
+  } else {
+    roleApp.replaceChildren(role === 'volunteer' ? volunteerView() : participantView());
+    // QR code MUST be generated after the node is in the live DOM
+    if (role === 'participant' && participantScreen === 'registered-detail') {
+      requestAnimationFrame(() => renderParticipantQr());
+    }
+  }
+};
+render();
+bootstrapVolunteerSession().then((allowed) => { if (!allowed) return; if (role === 'volunteer') subscribeToFirestoreTasks(); if (role === 'participant') loadParticipantEvents(); });
+
+document.querySelector('#roleLogout')?.addEventListener('click', async (event) => {
+  event.preventDefault();
+  try { const services = await getFirestoreServices(); if (services) await services.signOut(services.auth); } catch { }
+  sessionStorage.clear(); window.location.href = 'team-login.html';
+});
+
+// ─── QR Scanner Logic ───────────────────────────────────────────────────────
+const destroyQrScanner = () => {
+  if (qrScannerInstance) {
+    try { qrScannerInstance.clear(); } catch { }
+    qrScannerInstance = null;
+  }
+  scannerPaused = false;
+};
+
+const showScanResult = (type, title, sub) => {
+  const result = document.getElementById('scannerResult');
+  const icon = document.getElementById('scannerResultIcon');
+  const titleEl = document.getElementById('scannerResultTitle');
+  const subEl = document.getElementById('scannerResultSub');
+  if (!result) return;
+  result.hidden = false;
+  result.className = `scanner-result scanner-result--${type}`;
+  icon.textContent = type === 'success' ? '✓' : type === 'checkout' ? '↩' : '✕';
+  titleEl.textContent = title;
+  subEl.textContent = sub;
+};
+
+const addScanLogEntry = (action, name, eventName) => {
+  const logList = document.getElementById('scannerLogList');
+  if (!logList) return;
+  const emptyMsg = logList.querySelector('.scanner-log-empty');
+  if (emptyMsg) emptyMsg.remove();
+  const entry = document.createElement('div');
+  entry.className = `scan-log-entry scan-log-entry--${action}`;
+  const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const icon = action === 'checked-in' ? '✓' : action === 'checked-out' ? '↩' : '✕';
+  entry.innerHTML = `<span class="scan-log-icon">${icon}</span><div><strong>${name || 'Unknown'}</strong><small>${eventName || '—'} · ${timeStr}</small></div><span class="scan-log-badge scan-log-badge--${action}">${action === 'checked-in' ? 'Checked In' : action === 'checked-out' ? 'Checked Out' : 'Invalid'}</span>`;
+  logList.prepend(entry);
+};
+
+const handleQrScan = async (qrToken) => {
+  if (scannerPaused) return;
+  scannerPaused = true;
+
+  try {
+    const services = await getFirestoreServices();
+    if (!services) throw new Error('Firebase not configured.');
+
+    const regRef = services.doc(services.db, 'registrations', qrToken);
+    const regSnap = await services.getDoc(regRef);
+
+    if (!regSnap.exists()) {
+      showScanResult('error', 'Invalid QR Code', 'This token was not found in the system.');
+      addScanLogEntry('invalid', 'Unknown Token', '—');
+      setTimeout(() => { const r = document.getElementById('scannerResult'); if (r) r.hidden = true; scannerPaused = false; }, 3000);
+      return;
+    }
+
+    const data = regSnap.data();
+    const { status, participantName, eventId } = data;
+
+    if (status === 'REGISTERED') {
+      // First scan → Check In
+      await services.updateDoc(regRef, {
+        status: 'CHECKED_IN',
+        checkInTime: services.serverTimestamp(),
+        volunteerId: volunteerProfile.uid,
+        volunteerName: volunteerProfile.name
+      });
+      // Also update the legacy participantRegistrations collection for admin compatibility
+      try {
+        const pid = data.participantId || '';
+        const legacyRef = services.doc(services.db, 'participantRegistrations', `${pid}_${eventId}`);
+        await services.updateDoc(legacyRef, { status: 'Checked In', attendance: 'Checked In', checkedInAt: new Date().toISOString() });
+      } catch { /* legacy update is best-effort */ }
+      showScanResult('success', `✓ Checked In — ${participantName}`, `Event: ${data.eventName || eventId}`);
+      addScanLogEntry('checked-in', participantName, data.eventName || eventId);
+
+    } else if (status === 'CHECKED_IN') {
+      // Second scan → Check Out
+      await services.updateDoc(regRef, {
+        status: 'CHECKED_OUT',
+        checkOutTime: services.serverTimestamp()
+      });
+      showScanResult('checkout', `↩ Checked Out — ${participantName}`, `Event: ${data.eventName || eventId}`);
+      addScanLogEntry('checked-out', participantName, data.eventName || eventId);
+
+    } else {
+      // CHECKED_OUT or unknown
+      showScanResult('error', 'Already Processed', `${participantName} has already checked out.`);
+      addScanLogEntry('invalid', participantName, data.eventName || eventId);
+    }
+  } catch (err) {
+    showScanResult('error', 'Scan Error', err.message || 'Could not process this QR code.');
+    addScanLogEntry('invalid', '—', '—');
+  }
+
+  // Auto-resume after 3 seconds
+  setTimeout(() => {
+    const r = document.getElementById('scannerResult');
+    if (r) r.hidden = true;
+    scannerPaused = false;
+  }, 3000);
+};
+
+const mountQrScanner = (attempt = 0) => {
+  const readerEl = document.getElementById('qr-reader');
+  if (!readerEl) return; // Scanner view was closed before library loaded
+
+  // Retry up to 10 times (5 seconds total) waiting for CDN library to arrive
+  if (typeof Html5QrcodeScanner === 'undefined') {
+    if (attempt < 10) {
+      setTimeout(() => mountQrScanner(attempt + 1), 500);
+    } else {
+      readerEl.innerHTML = '<p style="color:#f87171;padding:20px;text-align:center">QR scanner library failed to load. Check your internet connection and refresh.</p>';
+    }
+    return;
+  }
+
+  destroyQrScanner();
+
+  try {
+    qrScannerInstance = new Html5QrcodeScanner(
+      'qr-reader',
+      {
+        fps: 10,
+        qrbox: { width: 250, height: 250 },
+        rememberLastUsedCamera: true,
+        showTorchButtonIfSupported: true,
+        aspectRatio: 1.0
+      },
+      /* verbose= */ false
+    );
+
+    qrScannerInstance.render(
+      (decodedText) => {
+        // Prevent duplicate rapid fires
+        const trimmed = decodedText.trim();
+        if (trimmed) handleQrScan(trimmed);
+      },
+      (_errorMessage) => { /* Per-frame decode errors are expected — ignore */ }
+    );
+  } catch (err) {
+    console.error('mountQrScanner error:', err);
+    if (readerEl) readerEl.innerHTML = `<p style="color:#f87171;padding:20px;text-align:center">Could not start camera: ${err.message}</p>`;
+  }
+};
+
+roleApp.addEventListener('click', async (event) => {
+  // ── Volunteer: open scanner ──────────────────────────────────────────────
+  const actionTarget = event.target.closest('[data-action]');
+  if (role === 'volunteer' && actionTarget?.dataset.action === 'open-scanner') {
+    volunteerScreen = 'scanner';
+    render();
+    return;
+  }
+  if (role === 'volunteer' && actionTarget?.dataset.action === 'close-scanner') {
+    destroyQrScanner();
+    volunteerScreen = 'dashboard';
+    render();
+    return;
+  }
+
   const participantTarget = event.target.closest('[data-participant-action]');
   if (role === 'participant' && participantTarget) {
     const participantAction = participantTarget.dataset.participantAction;
     if (participantAction === 'participant-tab') { participantTab = participantTarget.dataset.tab; participantScreen = 'workspace'; render(); return; }
+    if (participantAction === 'calendar-month') { const nextMonth = participantCalendarDate.month + Number(participantTarget.dataset.direction); const nextDate = new Date(participantCalendarDate.year, nextMonth, 1); participantCalendarDate = { year: nextDate.getFullYear(), month: nextDate.getMonth() }; render(); return; }
+    if (participantAction === 'calendar-today') { const today = new Date(); participantCalendarDate = { year: today.getFullYear(), month: today.getMonth() }; render(); return; }
     if (participantAction === 'view-event') { participantEventId = participantTarget.dataset.eventId; participantScreen = 'public-detail'; render(); return; }
     if (participantAction === 'open-registered') { participantEventId = participantTarget.dataset.eventId; participantScreen = 'registered-detail'; render(); return; }
     if (participantAction === 'back-workspace') { participantScreen = 'workspace'; participantTab = 'events'; render(); return; }
     if (participantAction === 'view-public-details') { participantEventId = participantTarget.dataset.eventId; participantScreen = 'public-detail'; render(); return; }
     if (participantAction === 'register-event') {
       participantEventId = participantTarget.dataset.eventId;
-      if (!participantIsRegistered(participantEventId)) { participantRegisteredIds = [...participantRegisteredIds, participantEventId]; saveJson(participantRegistrationKey, participantRegisteredIds); }
+      if (!participantIsRegistered(participantEventId)) {
+        participantRegisteredIds = [...new Set([...participantRegisteredIds, participantEventId])];
+        saveJson(participantRegistrationKey, participantRegisteredIds);
+        const registeredDate = parseEventStartDate(getParticipantEvent());
+        if (registeredDate) participantCalendarDate = { year: registeredDate.getFullYear(), month: registeredDate.getMonth() };
+
+        const pid = storedProfile?.uid || `participant-${Date.now()}`;
+        const selectedEvent = getParticipantEvent();
+        const participantInfo = {
+          id: pid,
+          name: participant.name || 'Participant User',
+          email: participant.email || 'participant@eventflow.demo',
+          college: 'PICT Pune',
+          registration: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          attendance: 'Not Checked In',
+          checkedInAt: null,
+          registeredAt: new Date().toISOString()
+        };
+
+        try {
+          const adminParticipantsKey = `eventflowParticipants:${participantEventId}`;
+          const existingList = JSON.parse(localStorage.getItem(adminParticipantsKey) || '[]');
+          const alreadyListed = existingList.some((item) => item.email === participantInfo.email || item.id === participantInfo.id);
+          if (!alreadyListed) {
+            existingList.unshift(participantInfo);
+            localStorage.setItem(adminParticipantsKey, JSON.stringify(existingList));
+          }
+        } catch (e) { }
+
+        // ── PHASE 2: Write registrations doc + generate qrToken ─────────
+        (async () => {
+          try {
+            const services = await getFirestoreServices();
+            if (services) {
+              // Generate a unique QR token
+              const qrToken = typeof crypto !== 'undefined' && crypto.randomUUID
+                ? crypto.randomUUID()
+                : `${pid}-${participantEventId}-${Date.now()}`;
+
+              // Persist token locally so the QR can be rendered offline too
+              saveJson(qrTokenKey(participantEventId), qrToken);
+
+              // Write to canonical `registrations` collection (doc ID = qrToken)
+              const registrationDocRef = services.doc(services.db, 'registrations', qrToken);
+              await services.setDoc(registrationDocRef, {
+                qrToken,
+                status: 'REGISTERED',
+                checkInTime: null,
+                checkOutTime: null,
+                eventId: participantEventId,
+                eventName: selectedEvent?.name || '',
+                participantId: pid,
+                participantName: participant.name,
+                email: participant.email,
+                volunteerId: null,
+                timestamp: services.serverTimestamp()
+              });
+
+              // Also keep the legacy collections in sync
+              const registrationRef = services.doc(services.db, 'participantRegistrations', `${pid}_${participantEventId}`);
+              const eventParticipantRef = services.doc(services.db, `events/${participantEventId}/participants`, pid);
+              const registration = {
+                participantId: pid,
+                eventId: participantEventId,
+                participantName: participant.name,
+                participantEmail: participant.email,
+                eventName: selectedEvent?.name || '',
+                registeredAt: services.serverTimestamp(),
+                status: 'Registered',
+                attendance: 'Not Checked In',
+                qrToken
+              };
+              await services.setDoc(registrationRef, registration, { merge: true });
+              await services.setDoc(eventParticipantRef, registration, { merge: true });
+            }
+          } catch (err) {
+            console.warn('Firestore registration sync note:', err);
+          }
+        })();
+      }
       participantScreen = 'public-detail';
       render();
       showToast('You are registered for this event.');
@@ -169,15 +865,28 @@ roleApp.addEventListener('click', (event) => {
   if (action === 'update-progress') openProgressModal();
 });
 
+roleApp.addEventListener('input', (event) => {
+  if (role !== 'participant' || event.target.id !== 'participantSearch') return;
+  participantSearch = event.target.value;
+  render();
+  const input = document.querySelector('#participantSearch');
+  input?.focus();
+  input?.setSelectionRange(participantSearch.length, participantSearch.length);
+});
+
 roleApp.addEventListener('change', (event) => {
   const input = event.target.closest('[data-task-id]');
   if (!input) return;
   const task = tasks.find((item) => item.id === input.dataset.taskId);
   if (!task) return;
-  task.completed = input.checked;
-  saveJson(taskStorageKey, Object.fromEntries(tasks.map((item) => [item.id, item.completed])));
-  getFirestoreServices().then((services) => services?.updateDoc(services.doc(services.db, 'tasks', task.id), { completed: task.completed })).catch(() => {});
+  const previousState = task.completed;
+  const completed = input.checked;
+  task.completed = completed;
   render();
+  getFirestoreServices().then(async (services) => {
+    if (!services) throw new Error('Firebase is not configured.');
+    await services.updateDoc(services.doc(services.db, 'tasks', task.id), { completed, completedAt: completed ? services.serverTimestamp() : null, updatedAt: services.serverTimestamp() });
+  }).catch(() => { task.completed = previousState; render(); showToast('Could not update this task. Please try again.'); });
 });
 
 document.addEventListener('click', (event) => {

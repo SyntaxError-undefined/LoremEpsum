@@ -1,0 +1,102 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    match /users/{userId} {
+      allow create: if signedIn() && request.auth.uid == userId
+        && (request.resource.data.role == 'admin'
+          || request.resource.data.role == 'participant'
+          || (request.resource.data.role == 'volunteer'
+            && request.resource.data.email == request.auth.token.email
+            && exists(/databases/$(database)/documents/volunteerInvites/$(request.resource.data.inviteId))));
+      allow read, update: if signedIn() && request.auth.uid == userId;
+    }
+
+    match /volunteerInvites/{inviteId} {
+      // The invitation URL is a capability link. It only exposes the pending
+      // roster for that event; account creation is still restricted to the
+      // authenticated email matching an invited address.
+      allow get: if resource.data.status == 'pending';
+      allow create, update: if isAdmin();
+    }
+
+    match /organizations/{organizationId} {
+      allow create: if signedIn() && request.auth.uid == request.resource.data.ownerUid;
+      allow read, update: if isAdmin();
+    }
+
+    match /events/{eventId} {
+      // Participants can only discover events an admin marked public.
+      allow read: if isAdmin() || resource.data.visibility == 'public';
+      allow create, update, delete: if isAdmin();
+
+      match /participants/{participantId} {
+        allow create: if signedIn() && request.auth.uid == participantId
+          && get(/databases/$(database)/documents/events/$(eventId)).data.visibility == 'public';
+        allow read: if isAdmin() || (signedIn() && request.auth.uid == participantId);
+        allow update, delete: if isAdmin();
+      }
+
+      match /volunteers/{volunteerId} {
+        allow read: if isAdmin() || (signedIn() && resource.data.email == request.auth.token.email);
+        allow create, update, delete: if isAdmin();
+      }
+    }
+
+    match /participantRegistrations/{registrationId} {
+      allow create: if signedIn() && request.auth.uid == request.resource.data.participantId
+        && get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.visibility == 'public';
+      allow read: if isAdmin() || (signedIn() && resource.data.participantId == request.auth.uid);
+      // Allow participants to update their own doc (e.g. to backfill qrToken)
+      allow update: if isAdmin()
+        || (signedIn() && resource.data.participantId == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    match /tasks/{taskId} {
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.assignedEmail == request.auth.token.email);
+      allow update: if isAdmin()
+        || (signedIn()
+          && resource.data.assignedEmail == request.auth.token.email
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['completed', 'completedAt', 'updatedAt']));
+      allow create, delete: if isAdmin();
+    }
+
+    match /progressReports/{reportId} {
+      allow create: if signedIn() && request.auth.uid == request.resource.data.volunteerId;
+      allow read: if isAdmin() || (signedIn() && resource.data.volunteerId == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
+
+    // ── QR Check-In / Check-Out collection ───────────────────────────────
+    // Doc ID = qrToken (UUID). Created by the participant who registers.
+    // Updated by any signed-in volunteer (status transitions only).
+    match /registrations/{registrationId} {
+      // Participants can create their own registration docs
+      allow create: if signedIn()
+        && request.auth.uid == request.resource.data.participantId;
+
+      // Participants can read their own docs; admins can read all
+      allow read: if isAdmin()
+        || (signedIn() && resource.data.participantId == request.auth.uid);
+
+      // Volunteers can update status + timestamps only (not participantId / email)
+      allow update: if signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'checkInTime', 'checkOutTime', 'volunteerId', 'volunteerName']);
+
+      allow delete: if isAdmin();
+    }
+  }
+}

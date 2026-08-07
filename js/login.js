@@ -1,44 +1,24 @@
-const teamTab = document.querySelector('#teamTab');
-const participantTab = document.querySelector('#participantTab');
-const teamLogin = document.querySelector('#teamLogin');
-const participantLogin = document.querySelector('#participantLogin');
-const passwordToggle = document.querySelector('#passwordToggle');
-const teamPassword = document.querySelector('#teamPassword');
+const loginForm = document.querySelector('#loginForm');
+const resetPanel = document.querySelector('#resetPanel');
+const loginStatus = document.querySelector('#loginStatus');
+const resetStatus = document.querySelector('#resetStatus');
+const loginPassword = document.querySelector('#loginPassword');
+const loginScope = document.body.dataset.loginScope || (new URLSearchParams(window.location.search).get('role') === 'participant' ? 'participant' : 'team');
+const participantLogin = loginScope === 'participant';
 let firebaseServices;
-const demoTeamAccounts = {
-  'admin@eventflow.demo': { password: 'Admin@123', role: 'admin', name: 'Anirudh Sharma' },
-  'volunteer@eventflow.demo': { password: 'Volunteer@123', role: 'volunteer', name: 'Rahul', department: 'Marketing', eventId: 'pulzion', eventName: 'Pulzion 2027', eventMeta: 'Pulzion 2027 · 28 Aug — 30 Aug 2027' }
-};
 
-const setMode = (mode) => {
-  const isTeam = mode === 'team';
-  teamTab.classList.toggle('is-active', isTeam);
-  participantTab.classList.toggle('is-active', !isTeam);
-  teamTab.setAttribute('aria-selected', String(isTeam));
-  participantTab.setAttribute('aria-selected', String(!isTeam));
-  teamLogin.hidden = !isTeam;
-  participantLogin.hidden = isTeam;
-  (isTeam ? teamLogin : participantLogin).classList.remove('is-active');
-  requestAnimationFrame(() => (isTeam ? teamLogin : participantLogin).classList.add('is-active'));
-};
-
-teamTab.addEventListener('click', () => setMode('team'));
-participantTab.addEventListener('click', () => setMode('participant'));
-passwordToggle.addEventListener('click', () => {
-  const isVisible = teamPassword.type === 'text';
-  teamPassword.type = isVisible ? 'password' : 'text';
-  passwordToggle.classList.toggle('is-visible', !isVisible);
-  passwordToggle.setAttribute('aria-label', isVisible ? 'Show password' : 'Hide password');
-});
-
-const clearFieldError = (input) => {
-  const group = input.closest('.field-group');
-  group.classList.remove('has-error');
-  group.querySelector('.field-error').textContent = '';
-};
-document.querySelectorAll('.field-group input').forEach((input) => input.addEventListener('input', () => clearFieldError(input)));
-const showError = (input, message) => { const group = input.closest('.field-group'); group.classList.add('has-error'); group.querySelector('.field-error').textContent = message; };
 const validEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+const setStatus = (element, message, type = '') => { element.textContent = message; element.className = `auth-status${type ? ` is-${type}` : ''}`; };
+const clearError = (input) => { const group = input.closest('.field-group'); group.classList.remove('has-error'); group.querySelector('.field-error').textContent = ''; };
+const showError = (input, message) => { const group = input.closest('.field-group'); group.classList.add('has-error'); group.querySelector('.field-error').textContent = message; };
+
+document.querySelectorAll('.field-group input').forEach((input) => input.addEventListener('input', () => clearError(input)));
+document.querySelector('#passwordToggle').addEventListener('click', () => {
+  const visible = loginPassword.type === 'text';
+  loginPassword.type = visible ? 'password' : 'text';
+  document.querySelector('#passwordToggle').classList.toggle('is-visible', !visible);
+  document.querySelector('#passwordToggle').setAttribute('aria-label', visible ? 'Show password' : 'Hide password');
+});
 
 const getFirebaseServices = async () => {
   if (firebaseServices) return firebaseServices;
@@ -51,81 +31,81 @@ const getFirebaseServices = async () => {
   ]);
   const app = initializeApp(config);
   firebaseServices = { auth: authSdk.getAuth(app), db: firestoreSdk.getFirestore(app), ...authSdk, ...firestoreSdk };
+  await authSdk.setPersistence(firebaseServices.auth, authSdk.browserLocalPersistence);
   return firebaseServices;
 };
 
-const saveAuthenticatedProfile = (uid, email, profile) => {
-  sessionStorage.setItem('eventflowUser', JSON.stringify({ uid, email, ...profile }));
-  sessionStorage.setItem('eventflowDemoRole', profile.role);
-  sessionStorage.setItem('eventflowDemoEmail', email);
+const saveProfile = (user, profile) => {
+  const teamRole = profile.role;
+  const sessionRole = participantLogin ? 'participant' : teamRole;
+  const sessionProfile = { ...profile, role: sessionRole, teamRole: teamRole === 'volunteer' ? 'volunteer' : teamRole === 'admin' ? 'admin' : undefined };
+  sessionStorage.setItem('eventflowUser', JSON.stringify({ uid:user.uid, email:user.email, ...sessionProfile }));
+  sessionStorage.setItem('eventflowDemoRole', sessionRole);
+  sessionStorage.setItem('eventflowDemoEmail', user.email || '');
 };
+const routeForProfile = (profile) => ['admin', 'volunteer', 'participant'].includes(profile.role) ? (profile.role === 'admin' ? 'admin.html' : 'role-dashboard.html') : null;
+const loadRoleProfile = async (services, user) => {
+  const snapshot = await services.getDoc(services.doc(services.db, 'users', user.uid));
+  if (!snapshot.exists()) throw new Error('Your account is not connected to an EventFlow workspace yet.');
+  const profile = snapshot.data();
+  if (!['admin', 'volunteer', 'participant'].includes(profile.role)) throw new Error('This account does not have a valid EventFlow role.');
+  const teamEligible = ['admin', 'volunteer'].includes(profile.role);
+  const participantEligible = ['participant', 'volunteer'].includes(profile.role) || profile.roles?.includes('participant');
+  if (participantLogin && !participantEligible) throw new Error('This account is not set up for participant access.');
+  if (!participantLogin && !teamEligible) throw new Error('This account is not set up for team access.');
+  return profile;
+};
+const authError = (error) => ({
+  'auth/invalid-credential':'Email or password is incorrect.',
+  'auth/user-not-found':'Email or password is incorrect.',
+  'auth/wrong-password':'Email or password is incorrect.',
+  'auth/popup-closed-by-user':'Google sign-in was cancelled.',
+  'auth/network-request-failed':'Network error. Check your connection and try again.'
+}[error?.code] || error?.message || 'Unable to authenticate right now.');
 
-teamLogin.addEventListener('submit', async (event) => {
+loginForm.addEventListener('submit', async (event) => {
   event.preventDefault();
-  const email = document.querySelector('#teamEmail');
+  const email = document.querySelector('#loginEmail');
+  const password = document.querySelector('#loginPassword');
+  clearError(email); clearError(password); setStatus(loginStatus, '');
   let valid = true;
-  clearFieldError(email);
-  clearFieldError(teamPassword);
-  if (!validEmail(email.value.trim())) { showError(email, 'Enter a valid work email.'); valid = false; }
-  if (!teamPassword.value) { showError(teamPassword, 'Enter your password.'); valid = false; }
-  const status = document.querySelector('#teamStatus');
-  if (!valid) { status.textContent = ''; return; }
-  status.textContent = 'Verifying your account...';
+  if (!validEmail(email.value.trim())) { showError(email, 'Enter a valid email address.'); valid = false; }
+  if (!password.value) { showError(password, 'Enter your password.'); valid = false; }
+  if (!valid) return;
+  setStatus(loginStatus, participantLogin ? 'Opening participant access...' : 'Checking your team workspace...');
   try {
     const services = await getFirebaseServices();
-    if (!services) {
-      const demoAccount = demoTeamAccounts[email.value.trim().toLowerCase()];
-      if (!demoAccount || demoAccount.password !== teamPassword.value) { showError(teamPassword, 'Demo email or password is incorrect.'); status.textContent = ''; return; }
-      saveAuthenticatedProfile(`demo-${demoAccount.role}`, email.value.trim().toLowerCase(), demoAccount);
-      status.textContent = `Opening ${demoAccount.role} workspace...`;
-      window.setTimeout(() => { window.location.href = demoAccount.role === 'admin' ? 'admin.html' : 'role-dashboard.html'; }, 220);
-      return;
-    }
-    const credentials = await services.signInWithEmailAndPassword(services.auth, email.value.trim(), teamPassword.value);
-    const profileSnapshot = await services.getDoc(services.doc(services.db, 'users', credentials.user.uid));
-    const profile = profileSnapshot.exists() ? profileSnapshot.data() : null;
-    if (!profile || !['admin', 'volunteer'].includes(profile.role)) { await services.signOut(services.auth); status.textContent = 'Your account does not have a valid EventFlow team role.'; return; }
-    const assignedEvent = Array.isArray(profile.events) ? profile.events[0] : null;
-    const normalizedProfile = { ...profile, eventId: profile.eventId || assignedEvent?.eventId, eventName: profile.eventName || assignedEvent?.name, eventMeta: profile.eventMeta || assignedEvent?.meta };
-    saveAuthenticatedProfile(credentials.user.uid, credentials.user.email || email.value.trim().toLowerCase(), normalizedProfile);
-    status.textContent = `Opening ${normalizedProfile.role} workspace...`;
-    window.setTimeout(() => { window.location.href = normalizedProfile.role === 'admin' ? 'admin.html' : 'role-dashboard.html'; }, 220);
-  } catch (error) {
-    status.textContent = error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found' ? 'Email or password is incorrect.' : 'Unable to sign in right now. Check your Firebase configuration.';
-  }
+    if (!services) throw new Error('Firebase is not configured yet. Add the runtime Firebase configuration before signing in.');
+    const credentials = await services.signInWithEmailAndPassword(services.auth, email.value.trim(), password.value);
+    const profile = await loadRoleProfile(services, credentials.user);
+    const destination = routeForProfile(profile);
+    if (!destination) throw new Error('No workspace is assigned to this account.');
+    saveProfile(credentials.user, profile);
+    setStatus(loginStatus, participantLogin ? 'Opening your participant space...' : `Opening your ${profile.role} workspace...`, 'success');
+    window.setTimeout(() => { window.location.href = destination; }, 240);
+  } catch (error) { setStatus(loginStatus, authError(error), 'error'); }
 });
 
-const demoParticipantAccounts = { 'rahul.participant@eventflow.demo': { password: 'Participant@123', role: 'participant', name: 'Rahul Kadam' } };
-participantLogin.addEventListener('submit', (event) => {
+document.querySelector('#googleLoginButton').addEventListener('click', async () => {
+  setStatus(loginStatus, 'Opening Google sign-in...');
+  try {
+    const services = await getFirebaseServices();
+    if (!services) throw new Error('Firebase is not configured yet. Add the runtime Firebase configuration before signing in.');
+    const credentials = await services.signInWithPopup(services.auth, new services.GoogleAuthProvider());
+    const profile = await loadRoleProfile(services, credentials.user);
+    const destination = routeForProfile(profile);
+    if (!destination) throw new Error('No workspace is assigned to this account.');
+    saveProfile(credentials.user, profile);
+    setStatus(loginStatus, participantLogin ? 'Opening your participant space...' : `Opening your ${profile.role} workspace...`, 'success');
+    window.setTimeout(() => { window.location.href = destination; }, 240);
+  } catch (error) { setStatus(loginStatus, authError(error), 'error'); }
+});
+
+document.querySelector('#forgotPasswordLink').addEventListener('click', (event) => { event.preventDefault(); resetPanel.hidden = false; loginForm.hidden = true; document.querySelector('#resetEmail').value = document.querySelector('#loginEmail').value; });
+document.querySelector('#backToLogin').addEventListener('click', () => { resetPanel.hidden = true; loginForm.hidden = false; setStatus(resetStatus, ''); });
+resetPanel.addEventListener('submit', async (event) => {
   event.preventDefault();
-  const email = document.querySelector('#participantEmail');
-  const password = document.querySelector('#participantPassword');
-  let valid = true;
-  clearFieldError(email);
-  clearFieldError(password);
-  if (!validEmail(email.value.trim())) { showError(email, 'Enter a valid registered email.'); valid = false; }
-  if (!password.value) { showError(password, 'Enter your password.'); valid = false; }
-  const status = document.querySelector('#participantStatus');
-  if (!valid) { status.textContent = ''; return; }
-  const account = demoParticipantAccounts[email.value.trim().toLowerCase()];
-  if (!account || account.password !== password.value) { showError(password, 'Demo email or password is incorrect.'); status.textContent = ''; return; }
-  sessionStorage.removeItem('eventflowUser');
-  sessionStorage.setItem('eventflowUser', JSON.stringify({ uid: `demo-participant-${email.value.trim().toLowerCase()}`, name: account.name, email: email.value.trim().toLowerCase(), role: account.role }));
-  sessionStorage.setItem('eventflowDemoRole', account.role);
-  sessionStorage.setItem('eventflowDemoEmail', email.value.trim().toLowerCase());
-  status.textContent = 'Opening participant workspace...';
-  window.setTimeout(() => { window.location.href = 'role-dashboard.html?role=participant'; }, 220);
-});
-
-document.querySelector('#participantGoogleButton').addEventListener('click', () => {
-  sessionStorage.removeItem('eventflowUser');
-  sessionStorage.setItem('eventflowUser', JSON.stringify({ uid: 'demo-google-participant', name: 'Rahul Kadam', email: 'rahul.google@eventflow.demo', role: 'participant' }));
-  sessionStorage.setItem('eventflowDemoRole', 'participant');
-  sessionStorage.setItem('eventflowDemoEmail', 'rahul.google@eventflow.demo');
-  document.querySelector('#participantStatus').textContent = 'Opening participant workspace...';
-  window.setTimeout(() => { window.location.href = 'role-dashboard.html?role=participant'; }, 220);
-});
-
-document.querySelector('#createParticipantButton').addEventListener('click', () => {
-  document.querySelector('#participantStatus').textContent = 'Account creation will be connected when authentication is added.';
+  const email = document.querySelector('#resetEmail'); clearError(email); setStatus(resetStatus, '');
+  if (!validEmail(email.value.trim())) { showError(email, 'Enter a valid email address.'); return; }
+  try { const services = await getFirebaseServices(); if (!services) throw new Error('Firebase is not configured yet.'); await services.sendPasswordResetEmail(services.auth, email.value.trim()); setStatus(resetStatus, 'Password reset email sent. Check your inbox.', 'success'); } catch (error) { setStatus(resetStatus, authError(error), 'error'); }
 });
